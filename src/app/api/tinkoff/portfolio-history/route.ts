@@ -1,8 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { PortfolioSnapshot } from '@/lib/analytics';
-import { fetchPortfolio } from '@/lib/tinkoff-api';
+import { fetchPortfolio, moneyValueToNumber, quotationToNumber } from '@/lib/tinkoff-api';
+
+// Zod schemas for validation
+const PositionSchema = z.object({
+  symbol: z.string(),
+  quantity: z.number(),
+  currentPrice: z.number(),
+  value: z.number(),
+  investedValue: z.number().optional(),
+});
+
+const SnapshotSchema = z.object({
+  timestamp: z.union([z.string(), z.date()]).transform(val =>
+    typeof val === 'string' ? new Date(val) : val
+  ),
+  totalValue: z.number(),
+  positions: z.array(PositionSchema),
+  currency: z.string(),
+});
 
 // In-memory cache for portfolio history
+// TODO: Replace with persistent storage (Redis, database) for production
+// Current in-memory cache will reset on server restart
 const portfolioHistory: Map<string, PortfolioSnapshot[]> = new Map();
 
 export async function GET(request: NextRequest) {
@@ -10,12 +31,12 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const accountId = searchParams.get('accountId');
     const daysParam = searchParams.get('days');
-    const days = daysParam ? parseInt(daysParam, 10) : 30;
 
     console.log('=== DEBUG: Portfolio History GET Request ===');
     console.log('Account ID:', accountId);
-    console.log('Days:', days);
+    console.log('Days param:', daysParam);
 
+    // Validate accountId
     if (!accountId) {
       console.error('❌ No accountId provided');
       return NextResponse.json(
@@ -23,6 +44,21 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Validate days parameter
+    if (daysParam && daysParam !== 'all') {
+      const parsedDays = parseInt(daysParam, 10);
+      if (isNaN(parsedDays) || parsedDays <= 0) {
+        console.error('❌ Invalid days parameter');
+        return NextResponse.json(
+          { error: 'days must be a positive number or "all"' },
+          { status: 400 }
+        );
+      }
+    }
+
+    const days = daysParam === 'all' ? null : (daysParam ? parseInt(daysParam, 10) : 30);
+    console.log('Days:', days);
 
     const token = process.env.TINKOFF_API_TOKEN;
     console.log('Token exists:', !!token);
@@ -39,27 +75,25 @@ export async function GET(request: NextRequest) {
     const portfolio = await fetchPortfolio(accountId, token);
     console.log('✅ Portfolio fetched successfully');
 
-    // Create PortfolioSnapshot object
+    // Create PortfolioSnapshot object using helper functions
     const snapshot: PortfolioSnapshot = {
       timestamp: new Date(),
-      totalValue: portfolio.totalAmountShares?.units
-        ? parseFloat(portfolio.totalAmountShares.units) + (portfolio.totalAmountShares.nano / 1_000_000_000)
+      totalValue: portfolio.totalAmountShares
+        ? moneyValueToNumber(portfolio.totalAmountShares)
         : 0,
-      positions: portfolio.positions?.map(pos => ({
-        symbol: pos.ticker || pos.figi,
-        quantity: parseFloat(pos.quantity.units) + (pos.quantity.nano / 1_000_000_000),
-        currentPrice: pos.currentPrice
-          ? parseFloat(pos.currentPrice.units) + (pos.currentPrice.nano / 1_000_000_000)
-          : 0,
-        value: pos.currentPrice
-          ? (parseFloat(pos.quantity.units) + (pos.quantity.nano / 1_000_000_000)) *
-            (parseFloat(pos.currentPrice.units) + (pos.currentPrice.nano / 1_000_000_000))
-          : 0,
-        investedValue: pos.averagePositionPrice
-          ? (parseFloat(pos.quantity.units) + (pos.quantity.nano / 1_000_000_000)) *
-            (parseFloat(pos.averagePositionPrice.units) + (pos.averagePositionPrice.nano / 1_000_000_000))
-          : undefined,
-      })) || [],
+      positions: portfolio.positions?.map(pos => {
+        const quantity = quotationToNumber(pos.quantity);
+        const currentPrice = pos.currentPrice ? moneyValueToNumber(pos.currentPrice) : 0;
+        const averagePrice = pos.averagePositionPrice ? moneyValueToNumber(pos.averagePositionPrice) : null;
+
+        return {
+          symbol: pos.ticker || pos.figi,
+          quantity,
+          currentPrice,
+          value: quantity * currentPrice,
+          investedValue: averagePrice ? quantity * averagePrice : undefined,
+        };
+      }) || [],
       currency: portfolio.totalAmountShares?.currency || 'RUB',
     };
 
@@ -69,11 +103,12 @@ export async function GET(request: NextRequest) {
     // Add new snapshot to array
     snapshots.push(snapshot);
 
-    // Filter snapshots: keep only last N days
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - days);
-
-    snapshots = snapshots.filter(s => new Date(s.timestamp) >= cutoffDate);
+    // Filter snapshots: keep only last N days (if days is not null)
+    if (days !== null) {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - days);
+      snapshots = snapshots.filter(s => new Date(s.timestamp) >= cutoffDate);
+    }
 
     // Save filtered array back to cache
     portfolioHistory.set(accountId, snapshots);
@@ -104,10 +139,26 @@ export async function POST(request: NextRequest) {
     console.log('Account ID:', accountId);
     console.log('Snapshot timestamp:', snapshot?.timestamp);
 
-    if (!accountId) {
-      console.error('❌ No accountId provided');
+    // Validate accountId
+    if (!accountId || typeof accountId !== 'string') {
+      console.error('❌ Invalid or missing accountId');
       return NextResponse.json(
-        { error: 'accountId is required' },
+        { error: 'accountId is required and must be a string' },
+        { status: 400 }
+      );
+    }
+
+    // Validate snapshot with Zod schema
+    let validatedSnapshot: PortfolioSnapshot;
+    try {
+      validatedSnapshot = SnapshotSchema.parse(snapshot);
+    } catch (error) {
+      console.error('❌ Invalid snapshot data:', error);
+      return NextResponse.json(
+        {
+          error: 'Invalid snapshot data',
+          details: error instanceof z.ZodError ? error.issues : 'Validation failed'
+        },
         { status: 400 }
       );
     }
@@ -115,8 +166,8 @@ export async function POST(request: NextRequest) {
     // Get or create cache array for accountId
     let snapshots = portfolioHistory.get(accountId) || [];
 
-    // Add snapshot to array
-    snapshots.push(snapshot);
+    // Add validated snapshot to array
+    snapshots.push(validatedSnapshot);
 
     // Save back to cache
     portfolioHistory.set(accountId, snapshots);

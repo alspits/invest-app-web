@@ -3,21 +3,21 @@ import { Calendar } from 'lucide-react';
 import { useAnalyticsStore } from '../../../stores/analyticsStore';
 
 interface DateRangeSelectorProps {
-  accountId: string;
+  accountId: string | null;
 }
 
 const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({ accountId }) => {
-  const { selectedDays, setSelectedDays, loadHistory, isLoading } = useAnalyticsStore();
+  const { selectedDays, setSelectedDays, loadHistory, loading } = useAnalyticsStore();
 
-  const dateRangeOptions = [
+  const dateRangeOptions: Array<{ days: 30 | 90 | 180 | 365; label: string }> = [
     { days: 30, label: '30 Days' },
     { days: 90, label: '90 Days' },
     { days: 180, label: '180 Days' },
     { days: 365, label: '1 Year' },
   ];
 
-  const handleDateRangeChange = async (days: number) => {
-    if (isLoading) return;
+  const handleDateRangeChange = async (days: 30 | 90 | 180 | 365) => {
+    if (loading || !accountId) return;
     setSelectedDays(days);
     await loadHistory(accountId, days);
   };
@@ -32,7 +32,7 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({ accountId }) => {
             <button
               key={days}
               onClick={() => handleDateRangeChange(days)}
-              disabled={isLoading}
+              disabled={loading}
               className={`
                 flex items-center justify-center gap-2 px-4 py-2 rounded-lg
                 transition-all duration-200 ease-in-out
@@ -43,13 +43,13 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({ accountId }) => {
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }
                 ${
-                  isLoading
+                  loading
                     ? 'opacity-50 cursor-not-allowed'
                     : 'cursor-pointer'
                 }
               `}
             >
-              {isLoading && isActive ? (
+              {loading && isActive ? (
                 <svg
                   className="animate-spin h-4 w-4"
                   xmlns="http://www.w3.org/2000/svg"

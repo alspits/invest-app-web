@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   LineChart,
   Line,
@@ -13,10 +13,10 @@ import { format } from 'date-fns';
 import { useAnalyticsStore } from '../../../stores/analyticsStore';
 
 const HistoryChart: React.FC = () => {
-  const { snapshots, metrics } = useAnalyticsStore();
+  const { snapshots, loading } = useAnalyticsStore();
 
   // Loading state
-  if (metrics?.loading) {
+  if (loading && (!snapshots || snapshots.length === 0)) {
     return (
       <div className="w-full bg-white rounded-lg shadow-sm p-4">
         <h3 className="text-lg font-semibold text-gray-900 mb-2">Portfolio Value Over Time</h3>
@@ -41,18 +41,20 @@ const HistoryChart: React.FC = () => {
     );
   }
 
-  // Transform snapshots to chart data
-  const chartData = snapshots
-    .slice(-30) // Keep last 30 snapshots
-    .map((snapshot) => {
-      const timestamp = new Date(snapshot.timestamp);
-      return {
-        date: format(timestamp, 'MMM dd'),
-        fullDate: format(timestamp, 'MMM dd, HH:mm'),
-        value: Number(snapshot.totalValue.toFixed(2)),
-        currency: snapshot.currency,
-      };
-    });
+  // Transform snapshots to chart data (memoized)
+  const chartData = useMemo(() => {
+    return snapshots
+      .slice(-30) // Keep last 30 snapshots
+      .map((snapshot) => {
+        const timestamp = new Date(snapshot.timestamp);
+        return {
+          date: format(timestamp, 'MMM dd'),
+          fullDate: format(timestamp, 'MMM dd, HH:mm'),
+          value: Number(snapshot.totalValue.toFixed(2)),
+          currency: snapshot.currency,
+        };
+      });
+  }, [snapshots]);
 
   // Currency symbol mapping
   const getCurrencySymbol = (currency: string): string => {
@@ -74,9 +76,16 @@ const HistoryChart: React.FC = () => {
   };
 
   // Custom tooltip formatter
-  const CustomTooltip = ({ active, payload }: any) => {
+  interface ChartDataPoint {
+    date: string;
+    fullDate: string;
+    value: number;
+    currency: string;
+  }
+
+  const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: any[] }) => {
     if (active && payload && payload.length) {
-      const data = payload[0].payload;
+      const data = payload[0].payload as ChartDataPoint;
       return (
         <div className="bg-white border border-gray-300 rounded p-2 shadow-lg">
           <p className="text-sm font-medium">

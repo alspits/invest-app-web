@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   PieChart,
   Pie,
@@ -27,6 +27,7 @@ const COLORS = [
 interface ChartData {
   name: string;
   value: number;
+  [key: string]: any;
 }
 
 const PortfolioChart: React.FC = () => {
@@ -59,14 +60,25 @@ const PortfolioChart: React.FC = () => {
   // Get current snapshot (last item from snapshots array)
   const currentSnapshot = snapshots[snapshots.length - 1];
 
-  // Get positions with weights
-  const positionsWithWeights = getPositionWeights(currentSnapshot.positions);
+  // Transform to chart data format (memoized)
+  const chartData = useMemo(() => {
+    // Get positions with weights
+    const positionsWithWeights = getPositionWeights(currentSnapshot.positions);
 
-  // Filter out positions with 0 weight
-  const filteredPositions = positionsWithWeights.filter((pos) => pos.weight > 0);
+    // Filter out positions with 0 weight
+    const filteredPositions = positionsWithWeights.filter((pos) => pos.weight > 0);
+
+    // Transform to chart data format
+    const data: ChartData[] = filteredPositions.map((pos) => ({
+      name: pos.symbol, // Using symbol as the position name
+      value: parseFloat(pos.weight.toFixed(2)), // Weight as percentage, rounded to 2 decimals
+    }));
+
+    return data;
+  }, [currentSnapshot]);
 
   // Show empty state if no positions
-  if (filteredPositions.length === 0) {
+  if (chartData.length === 0) {
     return (
       <div className="w-full bg-white rounded-lg shadow-sm p-4">
         <h2 className="text-lg font-semibold text-gray-900 mb-2">Portfolio Allocation</h2>
@@ -77,20 +89,15 @@ const PortfolioChart: React.FC = () => {
     );
   }
 
-  // Transform to chart data format
-  const chartData: ChartData[] = filteredPositions.map((pos) => ({
-    name: pos.symbol, // Using symbol as the position name
-    value: parseFloat(pos.weight.toFixed(2)), // Weight as percentage, rounded to 2 decimals
-  }));
-
   // Custom tooltip formatter
-  const CustomTooltip = ({ active, payload }: any) => {
+  const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: any[] }) => {
     if (active && payload && payload.length) {
+      const data = payload[0];
       return (
         <div className="bg-white p-3 border border-gray-200 rounded shadow-lg">
-          <p className="font-semibold">{payload[0].name}</p>
+          <p className="font-semibold">{data.name}</p>
           <p className="text-sm text-gray-600">
-            {payload[0].value}%
+            {data.value}%
           </p>
         </div>
       );
@@ -117,7 +124,7 @@ const PortfolioChart: React.FC = () => {
               fill="#8884d8"
               dataKey="value"
               label={({ name, percent }) =>
-                `${name} ${(percent * 100).toFixed(1)}%`
+                `${name} ${percent ? (percent * 100).toFixed(1) : '0.0'}%`
               }
             >
               {displayData.map((entry, index) => (

@@ -66,18 +66,16 @@ export function calculateROI(currentValue: number, investedValue: number): numbe
 }
 
 /**
- * Calculate annualized volatility (standard deviation of returns)
+ * Helper function to calculate daily returns from snapshots
  *
  * @param snapshots - Array of historical portfolio snapshots (ordered chronologically)
- * @returns Annualized volatility as a percentage
+ * @returns Array of daily returns as decimals (e.g., 0.05 for 5% return)
  */
-export function calculateVolatility(snapshots: PortfolioSnapshot[]): number {
-  // Handle edge cases
+function calculateDailyReturns(snapshots: PortfolioSnapshot[]): number[] {
   if (!snapshots || snapshots.length < 2) {
-    return 0;
+    return [];
   }
 
-  // Calculate daily returns
   const dailyReturns: number[] = [];
 
   for (let i = 1; i < snapshots.length; i++) {
@@ -95,6 +93,22 @@ export function calculateVolatility(snapshots: PortfolioSnapshot[]): number {
       dailyReturns.push(dailyReturn);
     }
   }
+
+  return dailyReturns;
+}
+
+/**
+ * Calculate annualized volatility (standard deviation of returns)
+ *
+ * IMPORTANT: Uses 252 trading days per year for annualization (US market standard).
+ * For Russian market, consider adjusting to 250 trading days.
+ *
+ * @param snapshots - Array of historical portfolio snapshots (ordered chronologically)
+ * @returns Annualized volatility as a percentage
+ */
+export function calculateVolatility(snapshots: PortfolioSnapshot[]): number {
+  // Calculate daily returns using helper function
+  const dailyReturns = calculateDailyReturns(snapshots);
 
   // Need at least 2 returns to calculate standard deviation
   if (dailyReturns.length < 2) {
@@ -122,6 +136,9 @@ export function calculateVolatility(snapshots: PortfolioSnapshot[]): number {
 /**
  * Calculate Sharpe Ratio (risk-adjusted return)
  *
+ * IMPORTANT: Default risk-free rate is 5% (US T-bills). For Russian market,
+ * consider using the CBR key rate (currently ~16% as of 2024).
+ *
  * @param snapshots - Array of historical portfolio snapshots (ordered chronologically)
  * @param riskFreeRate - Annual risk-free rate as decimal (default: 0.05 for 5%)
  * @returns Sharpe ratio (higher is better)
@@ -130,28 +147,8 @@ export function calculateSharpeRatio(
   snapshots: PortfolioSnapshot[],
   riskFreeRate: number = 0.05
 ): number {
-  // Handle edge cases
-  if (!snapshots || snapshots.length < 2) {
-    return 0;
-  }
-
-  // Calculate daily returns
-  const dailyReturns: number[] = [];
-
-  for (let i = 1; i < snapshots.length; i++) {
-    const previousValue = snapshots[i - 1].totalValue;
-    const currentValue = snapshots[i].totalValue;
-
-    if (previousValue === 0 || !isFinite(previousValue) || !isFinite(currentValue)) {
-      continue;
-    }
-
-    const dailyReturn = (currentValue - previousValue) / previousValue;
-
-    if (isFinite(dailyReturn)) {
-      dailyReturns.push(dailyReturn);
-    }
-  }
+  // Calculate daily returns using helper function
+  const dailyReturns = calculateDailyReturns(snapshots);
 
   if (dailyReturns.length < 2) {
     return 0;
@@ -270,6 +267,11 @@ export function getPositionWeights(positions: Position[]): PositionWithWeight[] 
 /**
  * Calculate comprehensive portfolio metrics
  *
+ * IMPORTANT ASSUMPTIONS:
+ * - historicalSnapshots must be sorted chronologically (oldest first)
+ * - Day change is calculated from the second-to-last snapshot
+ * - Positions without investedValue are excluded from ROI calculation
+ *
  * @param snapshot - Current portfolio snapshot
  * @param historicalSnapshots - Array of historical snapshots including current (ordered chronologically)
  * @returns Complete portfolio metrics
@@ -279,8 +281,15 @@ export function calculateMetrics(
   historicalSnapshots: PortfolioSnapshot[]
 ): PortfolioMetrics {
   // Calculate total invested value from positions
+  // Only include positions that have investedValue defined
   const investedValue = snapshot.positions.reduce((sum, pos) => {
-    return sum + (pos.investedValue ?? pos.value);
+    if (!pos.investedValue) {
+      console.warn(
+        `Position ${pos.symbol} missing investedValue, excluding from ROI calculation`
+      );
+      return sum;
+    }
+    return sum + pos.investedValue;
   }, 0);
 
   // Calculate ROI
@@ -301,7 +310,7 @@ export function calculateMetrics(
   let dayChangeAbsolute = 0;
 
   if (historicalSnapshots.length >= 2) {
-    // Find the previous day's snapshot
+    // Find the previous day's snapshot (assumes snapshots are chronologically ordered)
     const previousSnapshot = historicalSnapshots[historicalSnapshots.length - 2];
     const previousValue = previousSnapshot.totalValue;
 

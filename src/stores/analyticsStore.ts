@@ -20,6 +20,20 @@ interface AnalyticsState {
   clearHistory: () => void;
 }
 
+// API response types
+interface ApiSnapshot {
+  timestamp: string;
+  totalValue: number;
+  positions: Array<{
+    symbol: string;
+    quantity: number;
+    currentPrice: number;
+    value: number;
+    investedValue?: number;
+  }>;
+  currency: string;
+}
+
 const initialState = {
   snapshots: [],
   metrics: null,
@@ -50,13 +64,28 @@ export const useAnalyticsStore = create<AnalyticsState>((set, get) => ({
 
       const data = await response.json();
 
-      // Parse dates correctly - convert timestamp strings to Date objects
-      const snapshots: PortfolioSnapshot[] = (data.snapshots || []).map(
-        (snapshot: any) => ({
-          ...snapshot,
-          timestamp: new Date(snapshot.timestamp),
+      // Parse dates correctly - convert timestamp strings to Date objects with error handling
+      const snapshots: PortfolioSnapshot[] = (data.snapshots || [])
+        .map((snapshot: ApiSnapshot) => {
+          try {
+            const timestamp = new Date(snapshot.timestamp);
+
+            // Validate that the date is valid
+            if (isNaN(timestamp.getTime())) {
+              console.error(`Invalid timestamp for snapshot: ${snapshot.timestamp}`);
+              return null;
+            }
+
+            return {
+              ...snapshot,
+              timestamp,
+            };
+          } catch (error) {
+            console.error(`Failed to parse timestamp: ${snapshot.timestamp}`, error);
+            return null;
+          }
         })
-      );
+        .filter((snapshot: PortfolioSnapshot | null): snapshot is PortfolioSnapshot => snapshot !== null);
 
       set({
         snapshots,
