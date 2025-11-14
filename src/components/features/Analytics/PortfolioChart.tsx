@@ -35,9 +35,9 @@ const PortfolioChart: React.FC = () => {
   // Show loading spinner
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-xl font-bold mb-4">Portfolio Allocation</h2>
-        <div className="flex items-center justify-center h-[300px]">
+      <div className="w-full bg-white rounded-lg shadow-sm p-4">
+        <h2 className="text-lg font-semibold text-gray-900 mb-2">Portfolio Allocation</h2>
+        <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
         </div>
       </div>
@@ -47,9 +47,9 @@ const PortfolioChart: React.FC = () => {
   // Show empty state if no metrics
   if (!metrics || !snapshots || snapshots.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-xl font-bold mb-4">Portfolio Allocation</h2>
-        <div className="flex items-center justify-center h-[300px] text-gray-500">
+      <div className="w-full bg-white rounded-lg shadow-sm p-4">
+        <h2 className="text-lg font-semibold text-gray-900 mb-2">Portfolio Allocation</h2>
+        <div className="flex items-center justify-center h-64 text-gray-500">
           <p>No portfolio data available</p>
         </div>
       </div>
@@ -68,9 +68,9 @@ const PortfolioChart: React.FC = () => {
   // Show empty state if no positions
   if (filteredPositions.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-xl font-bold mb-4">Portfolio Allocation</h2>
-        <div className="flex items-center justify-center h-[300px] text-gray-500">
+      <div className="w-full bg-white rounded-lg shadow-sm p-4">
+        <h2 className="text-lg font-semibold text-gray-900 mb-2">Portfolio Allocation</h2>
+        <div className="flex items-center justify-center h-64 text-gray-500">
           <p>No portfolio data available</p>
         </div>
       </div>
@@ -98,40 +98,45 @@ const PortfolioChart: React.FC = () => {
     return null;
   };
 
+  // Limit legend items to max 8
+  const displayData = chartData.slice(0, 8);
+
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
-      <h2 className="text-xl font-bold mb-4">Portfolio Allocation</h2>
-      <ResponsiveContainer width="100%" height={300}>
-        <PieChart margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
-          <Pie
-            data={chartData}
-            cx="50%"
-            cy="50%"
-            labelLine={false}
-            outerRadius={80}
-            fill="#8884d8"
-            dataKey="value"
-            startAngle={0}
-            endAngle={360}
-            label={({ name, percent }) =>
-              `${name} ${(percent * 100).toFixed(1)}%`
-            }
-          >
-            {chartData.map((entry, index) => (
-              <Cell
-                key={`cell-${index}`}
-                fill={COLORS[index % COLORS.length]}
-              />
-            ))}
-          </Pie>
-          <Tooltip content={<CustomTooltip />} />
-          <Legend
-            layout={chartData.length > 4 ? 'vertical' : 'horizontal'}
-            verticalAlign="bottom"
-            align="center"
-          />
-        </PieChart>
-      </ResponsiveContainer>
+    <div className="w-full bg-white rounded-lg shadow-sm p-4">
+      <h2 className="text-lg font-semibold text-gray-900 mb-2">Portfolio Allocation</h2>
+      <div className="w-full h-64 overflow-hidden">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+            <Pie
+              data={displayData}
+              cx="50%"
+              cy="50%"
+              labelLine={false}
+              innerRadius={0}
+              outerRadius={80}
+              fill="#8884d8"
+              dataKey="value"
+              label={({ name, percent }) =>
+                `${name} ${(percent * 100).toFixed(1)}%`
+              }
+            >
+              {displayData.map((entry, index) => (
+                <Cell
+                  key={`cell-${index}`}
+                  fill={COLORS[index % COLORS.length]}
+                />
+              ))}
+            </Pie>
+            <Tooltip content={<CustomTooltip />} />
+            <Legend
+              layout="horizontal"
+              verticalAlign="bottom"
+              align="center"
+              wrapperStyle={{ maxHeight: '40px', overflow: 'hidden', fontSize: '12px' }}
+            />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 };

@@ -18,10 +18,10 @@ const HistoryChart: React.FC = () => {
   // Loading state
   if (metrics?.loading) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-bold mb-2">Portfolio Value Over Time</h3>
-        <p className="text-sm text-gray-500 mb-4">Last 30 days</p>
-        <div className="flex items-center justify-center h-[300px]">
+      <div className="w-full bg-white rounded-lg shadow-sm p-4">
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">Portfolio Value Over Time</h3>
+        <p className="text-sm text-gray-600 mb-2">Last 30 days</p>
+        <div className="flex items-center justify-center h-80">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
         </div>
       </div>
@@ -31,10 +31,10 @@ const HistoryChart: React.FC = () => {
   // Empty state
   if (!snapshots || snapshots.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-bold mb-2">Portfolio Value Over Time</h3>
-        <p className="text-sm text-gray-500 mb-4">Last 30 days</p>
-        <div className="flex items-center justify-center h-[300px] text-gray-400">
+      <div className="w-full bg-white rounded-lg shadow-sm p-4">
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">Portfolio Value Over Time</h3>
+        <p className="text-sm text-gray-600 mb-2">Last 30 days</p>
+        <div className="flex items-center justify-center h-80 text-gray-400">
           <p>No historical data available</p>
         </div>
       </div>
@@ -68,9 +68,9 @@ const HistoryChart: React.FC = () => {
   const currency = chartData[0]?.currency || 'USD';
   const currencySymbol = getCurrencySymbol(currency);
 
-  // Custom Y-axis tick formatter
+  // Custom Y-axis tick formatter with "rub" suffix
   const formatYAxis = (value: number) => {
-    return `${currencySymbol}${value.toLocaleString()}`;
+    return `${value.toLocaleString()} rub`;
   };
 
   // Custom tooltip formatter
@@ -89,40 +89,42 @@ const HistoryChart: React.FC = () => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h3 className="text-lg font-bold mb-2">Portfolio Value Over Time</h3>
-      <p className="text-sm text-gray-500 mb-4">Last 30 days</p>
+    <div className="w-full bg-white rounded-lg shadow-sm p-4">
+      <h3 className="text-lg font-semibold text-gray-900 mb-2">Portfolio Value Over Time</h3>
+      <p className="text-sm text-gray-600 mb-2">Last 30 days</p>
 
-      <ResponsiveContainer width="100%" height={300}>
-        <LineChart
-          data={chartData}
-          margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-        >
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis
-            dataKey="date"
-            style={{ fontSize: '12px' }}
-            angle={-45}
-            textAnchor="end"
-            height={60}
-          />
-          <YAxis
-            tickFormatter={formatYAxis}
-            style={{ fontSize: '12px' }}
-          />
-          <Tooltip content={<CustomTooltip />} />
-          <Legend wrapperStyle={{ marginTop: '10px' }} />
-          <Line
-            type="monotone"
-            dataKey="value"
-            name="Portfolio Value"
-            stroke="#3b82f6"
-            strokeWidth={2}
-            dot={{ r: 4, fill: '#3b82f6' }}
-            activeDot={{ r: 6, fill: '#1e40af' }}
-          />
-        </LineChart>
-      </ResponsiveContainer>
+      <div className="w-full h-80">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart
+            data={chartData}
+            margin={{ top: 5, right: 30, left: 0, bottom: 5 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis
+              dataKey="date"
+              style={{ fontSize: '12px' }}
+              angle={-45}
+              textAnchor="end"
+              height={40}
+            />
+            <YAxis
+              width={60}
+              tickFormatter={formatYAxis}
+              style={{ fontSize: '12px' }}
+            />
+            <Tooltip content={<CustomTooltip />} />
+            <Line
+              type="monotone"
+              dataKey="value"
+              name="Portfolio Value"
+              stroke="#3b82f6"
+              strokeWidth={1}
+              dot={{ r: 3, fill: '#3b82f6' }}
+              activeDot={{ r: 5, fill: '#1e40af' }}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 };

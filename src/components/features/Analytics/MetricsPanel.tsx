@@ -33,9 +33,9 @@ const MetricCard: React.FC<MetricCardProps> = ({
   const textColorClass = colorClasses[color] || 'text-gray-900';
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-4 md:p-6 hover:shadow-lg transition-shadow duration-200">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 md:p-6 hover:shadow-md transition-shadow duration-200">
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-sm md:text-base font-bold text-gray-700">{label}</h3>
+        <h3 className="text-sm md:text-base font-bold text-gray-700 dark:text-gray-300">{label}</h3>
         {icon && <span className={textColorClass}>{icon}</span>}
       </div>
 
@@ -51,7 +51,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
       </div>
 
       {infoText && (
-        <p className="text-xs md:text-sm text-gray-500 mt-2">{infoText}</p>
+        <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 mt-2">{infoText}</p>
       )}
     </div>
   );
@@ -85,7 +85,7 @@ const MetricsPanel: React.FC = () => {
   const isRoiNegative = roi < 0;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {/* ROI Card */}
       <MetricCard
         label="ROI"
