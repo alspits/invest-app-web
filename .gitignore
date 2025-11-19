@@ -45,3 +45,4 @@ next-env.d.ts
 *.pem
 .vscode/settings.json
 .claude/
+mcp.json
