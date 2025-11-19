@@ -1,0 +1,57 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/Users/aleksandrspitsin/Documents/webapp/invest-app-web"
+      ]
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+    },
+    "memory": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"]
+    },
+    "brave-search": {
+      "command": "npx",
+      "args": ["-y", "@brave/brave-search-mcp-server"],
+      "env": {
+        "BRAVE_API_KEY": "YOUR_BRAVE_API_KEY_HERE"
+      }
+    },
+    "memory-bank": {
+      "command": "npx",
+      "args": ["-y", "memory-bank-mcp"]
+    },
+    "context7": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "MCP_TRANSPORT=stdio",
+        "-e",
+        "API_KEY=ctx7sk-f67eda6b-194a-4f14-a82f-f2fb4aa0c196",
+        "mcp/context7"
+      ]
+    },
+    "brightdata": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "BROWSER_AUTH=99e71e78021e9f4bf284d0a4a7eff8b5189f4f340da3de0e55083a85c6d820c3",
+        "-e",
+        "API_TOKEN=99e71e78021e9f4bf284d0a4a7eff8b5189f4f340da3de0e55083a85c6d820c3",
+        "docker.io/acuvity/mcp-server-brightdata:2.1.0"
+      ]
+    }
+  }
+}
