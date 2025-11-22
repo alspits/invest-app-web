@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { Operation } from '@/types/trading-pattern';
 
 // ============================================================================
 // Zod Schemas for Runtime Validation
@@ -376,6 +377,30 @@ export async function getInstrumentByFigi(
  * @param to - End date (ISO string)
  * @param figi - Optional: filter by specific instrument
  */
+// Operation types for fetchOperations
+const OperationSchema = z.object({
+  id: z.string(),
+  parentOperationId: z.string().optional(),
+  currency: z.string(),
+  payment: MoneyValueSchema,
+  price: MoneyValueSchema.optional(),
+  state: z.string(),
+  quantity: z.number(),
+  quantityRest: z.number().optional(),
+  figi: z.string(),
+  instrumentType: z.string(),
+  date: z.string(),
+  type: z.string(),
+  operationType: z.string().optional(),
+  instrumentUid: z.string().optional(),
+});
+
+const OperationsResponseSchema = z.object({
+  operations: z.array(OperationSchema),
+});
+
+type OperationsResponse = z.infer<typeof OperationsResponseSchema>;
+
 export async function fetchOperations(
   accountId: string,
   token: string,
@@ -383,29 +408,6 @@ export async function fetchOperations(
   to: string,
   figi?: string
 ): Promise<Operation[]> {
-  const OperationSchema = z.object({
-    id: z.string(),
-    parentOperationId: z.string().optional(),
-    currency: z.string(),
-    payment: MoneyValueSchema,
-    price: MoneyValueSchema.optional(),
-    state: z.string(),
-    quantity: z.number(),
-    quantityRest: z.number().optional(),
-    figi: z.string(),
-    instrumentType: z.string(),
-    date: z.string(),
-    type: z.string(),
-    operationType: z.string().optional(),
-    instrumentUid: z.string().optional(),
-  });
-
-  const OperationsResponseSchema = z.object({
-    operations: z.array(OperationSchema),
-  });
-
-  type Operation = z.infer<typeof OperationSchema>;
-  type OperationsResponse = z.infer<typeof OperationsResponseSchema>;
 
   const body: Record<string, unknown> = {
     accountId,
@@ -427,5 +429,6 @@ export async function fetchOperations(
     )
   );
 
-  return response.operations;
+  // Type assertion: Operations from Tinkoff API are compatible with our Operation type
+  return response.operations as Operation[];
 }
