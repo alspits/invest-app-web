@@ -1,0 +1,70 @@
+{
+  "name": "Investment Portfolio Tracker",
+  "short_name": "Портфель",
+  "description": "Трекер инвестиционного портфеля Tinkoff с аналитикой и уведомлениями",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#1e293b",
+  "background_color": "#0f172a",
+  "lang": "ru",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Портфель",
+      "short_name": "Портфель",
+      "description": "Открыть страницу портфеля",
+      "url": "/portfolio"
+    },
+    {
+      "name": "Аналитика",
+      "short_name": "Аналитика",
+      "description": "Открыть дашборд аналитики",
+      "url": "/analytics"
+    },
+    {
+      "name": "Новости",
+      "short_name": "Новости",
+      "description": "Открыть ленту новостей",
+      "url": "/news"
+    }
+  ],
+  "categories": [
+    "finance",
+    "productivity",
+    "business"
+  ],
+  "share_target": {
+    "action": "/share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  },
+  "display_override": [
+    "window-controls-overlay",
+    "standalone",
+    "minimal-ui"
+  ],
+  "prefer_related_applications": false,
+  "related_applications": [],
+  "iarc_rating_id": "e84b072d-71b3-4d3e-86ae-31a8ce4e53b7"
+}

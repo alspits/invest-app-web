@@ -1,0 +1,70 @@
+<svg width="512" height="512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background with subtle gradient -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e293b;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0f172a;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="barGradient512" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#10b981;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#059669;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <rect width="512" height="512" fill="url(#bgGradient)" rx="128"/>
+
+  <!-- Chart grid lines -->
+  <line x1="100" y1="420" x2="412" y2="420" stroke="#334155" stroke-width="2" opacity="0.5"/>
+  <line x1="100" y1="350" x2="412" y2="350" stroke="#334155" stroke-width="2" opacity="0.3"/>
+  <line x1="100" y1="280" x2="412" y2="280" stroke="#334155" stroke-width="2" opacity="0.3"/>
+  <line x1="100" y1="210" x2="412" y2="210" stroke="#334155" stroke-width="2" opacity="0.3"/>
+
+  <!-- Rising bars chart -->
+  <rect x="120" y="330" width="50" height="90" fill="url(#barGradient512)" rx="10"/>
+  <rect x="200" y="280" width="50" height="140" fill="url(#barGradient512)" rx="10"/>
+  <rect x="280" y="220" width="50" height="200" fill="url(#barGradient512)" rx="10"/>
+  <rect x="360" y="160" width="50" height="260" fill="url(#barGradient512)" rx="10"/>
+
+  <!-- Smooth trend line with glow -->
+  <path d="M 140 340 Q 180 300, 220 290 Q 260 240, 300 230 Q 340 180, 380 170"
+        stroke="#10b981"
+        stroke-width="6"
+        fill="none"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        filter="url(#glow)"/>
+
+  <!-- Glow effect for trend line -->
+  <defs>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Dollar sign with shadow -->
+  <text x="256" y="120"
+        font-family="Arial, sans-serif"
+        font-size="80"
+        font-weight="bold"
+        fill="#10b981"
+        text-anchor="middle"
+        filter="url(#shadow)">$</text>
+
+  <defs>
+    <filter id="shadow">
+      <feDropShadow dx="2" dy="2" stdDeviation="3" flood-color="#000000" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+
+  <!-- Up arrow indicator -->
+  <path d="M 410 140 L 430 120 L 450 140"
+        stroke="#10b981"
+        stroke-width="8"
+        fill="none"
+        stroke-linecap="round"
+        stroke-linejoin="round"/>
+</svg>

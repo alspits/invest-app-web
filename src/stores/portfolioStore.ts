@@ -58,6 +58,48 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
     set({ isLoadingAccounts: true, accountsError: null });
 
     try {
+      // Check if in development mode without API token
+      const isDev = process.env.NODE_ENV === 'development';
+      const hasToken = !!process.env.NEXT_PUBLIC_TINKOFF_API_TOKEN || !!process.env.TINKOFF_API_TOKEN;
+
+      // Use mock data in development without API token
+      if (isDev && !hasToken) {
+        console.log('🔧 Development mode: Using mock accounts data');
+
+        const mockAccounts: Account[] = [
+          {
+            id: 'mock-account-1',
+            type: 'ACCOUNT_TYPE_TINKOFF',
+            name: 'Брокерский счёт',
+            status: 'ACCOUNT_STATUS_OPEN',
+            openedDate: '2023-01-15T00:00:00Z',
+            accessLevel: 'ACCOUNT_ACCESS_LEVEL_FULL_ACCESS',
+          },
+          {
+            id: 'mock-account-2',
+            type: 'ACCOUNT_TYPE_TINKOFF_IIS',
+            name: 'ИИС',
+            status: 'ACCOUNT_STATUS_OPEN',
+            openedDate: '2023-03-20T00:00:00Z',
+            accessLevel: 'ACCOUNT_ACCESS_LEVEL_FULL_ACCESS',
+          },
+        ];
+
+        set({
+          accounts: mockAccounts,
+          isLoadingAccounts: false,
+          accountsError: null,
+        });
+
+        // Auto-select first account if none selected
+        if (!get().selectedAccountId) {
+          get().switchAccount(mockAccounts[0].id);
+        }
+
+        return;
+      }
+
+      // Production logic: Fetch from API
       const response = await fetch('/api/tinkoff/accounts');
 
       if (!response.ok) {
@@ -100,6 +142,68 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
     set({ isLoadingPortfolio: true, portfolioError: null });
 
     try {
+      // Check if in development mode without API token
+      const isDev = process.env.NODE_ENV === 'development';
+      const hasToken = !!process.env.NEXT_PUBLIC_TINKOFF_API_TOKEN || !!process.env.TINKOFF_API_TOKEN;
+
+      // Use mock data in development without API token
+      if (isDev && !hasToken) {
+        console.log('🔧 Development mode: Using mock portfolio data for account', accountId);
+
+        // Simulate API delay
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
+        const mockPortfolio: PortfolioResponse = {
+          totalAmountShares: { currency: 'rub', units: '150000', nano: 0 },
+          totalAmountBonds: { currency: 'rub', units: '50000', nano: 0 },
+          totalAmountEtf: { currency: 'rub', units: '30000', nano: 0 },
+          totalAmountCurrencies: { currency: 'rub', units: '10000', nano: 0 },
+          totalAmountFutures: { currency: 'rub', units: '0', nano: 0 },
+          expectedYield: { units: '12000', nano: 500000000 }, // 12000.5
+          positions: [
+            {
+              figi: 'BBG004730N88',
+              instrumentType: 'share',
+              quantity: { units: '10', nano: 0 },
+              averagePositionPrice: { currency: 'rub', units: '2500', nano: 0 },
+              expectedYield: { units: '500', nano: 0 },
+              currentPrice: { currency: 'rub', units: '2550', nano: 0 },
+              ticker: 'SBER',
+              name: 'Сбербанк',
+            },
+            {
+              figi: 'BBG004731032',
+              instrumentType: 'share',
+              quantity: { units: '5', nano: 0 },
+              averagePositionPrice: { currency: 'rub', units: '12000', nano: 0 },
+              expectedYield: { units: '1000', nano: 0 },
+              currentPrice: { currency: 'rub', units: '12200', nano: 0 },
+              ticker: 'GAZP',
+              name: 'Газпром',
+            },
+            {
+              figi: 'BBG000BPH459',
+              instrumentType: 'etf',
+              quantity: { units: '20', nano: 0 },
+              averagePositionPrice: { currency: 'rub', units: '1500', nano: 0 },
+              expectedYield: { units: '600', nano: 0 },
+              currentPrice: { currency: 'rub', units: '1530', nano: 0 },
+              ticker: 'TMOS',
+              name: 'Тинькофф iMOEX',
+            },
+          ],
+        };
+
+        set({
+          portfolio: mockPortfolio,
+          isLoadingPortfolio: false,
+          portfolioError: null,
+        });
+
+        return;
+      }
+
+      // Production logic: Fetch from API
       const response = await fetch(`/api/tinkoff/portfolio?accountId=${accountId}`);
 
       if (!response.ok) {

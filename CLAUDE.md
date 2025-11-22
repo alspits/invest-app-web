@@ -25,11 +25,21 @@ Environment Variables
 Required in .env.local:
 
 bash
+# Tinkoff API
 NEXT_PUBLIC_TINKOFF_API_URL=https://invest-public-api.tinkoff.ru/rest
 TINKOFF_API_TOKEN=<your_token>
+
+# News API
 NEWSAPI_KEY=<your_newsapi_key>
+
+# Auth
 NEXTAUTH_SECRET=<secret>
 NEXTAUTH_URL=http://localhost:3000
+
+# PWA Push Notifications (optional, generate with: npx web-push generate-vapid-keys)
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=<your_vapid_public_key>
+VAPID_PRIVATE_KEY=<your_vapid_private_key>
+VAPID_SUBJECT=mailto:your-email@example.com
 Tech Stack
 Framework: Next.js 16 (App Router) + React 19 + TypeScript
 
@@ -189,6 +199,8 @@ Detailed documentation in docs/FEATURES/:
 ✅ Investment Recommendations (exists in project)
 
 ✅ What-If Scenarios (exists in project)
+
+✅ Progressive Web App (PWA.md)
 
 Important Rules
 API Security: All Tinkoff calls via /api/tinkoff/* routes (server-side only)
