@@ -367,3 +367,65 @@ export async function getInstrumentByFigi(
 
   return response.instrument;
 }
+
+/**
+ * Fetch operations (trading history) for a specific account
+ * @param accountId - Account ID
+ * @param token - API token
+ * @param from - Start date (ISO string)
+ * @param to - End date (ISO string)
+ * @param figi - Optional: filter by specific instrument
+ */
+export async function fetchOperations(
+  accountId: string,
+  token: string,
+  from: string,
+  to: string,
+  figi?: string
+): Promise<Operation[]> {
+  const OperationSchema = z.object({
+    id: z.string(),
+    parentOperationId: z.string().optional(),
+    currency: z.string(),
+    payment: MoneyValueSchema,
+    price: MoneyValueSchema.optional(),
+    state: z.string(),
+    quantity: z.number(),
+    quantityRest: z.number().optional(),
+    figi: z.string(),
+    instrumentType: z.string(),
+    date: z.string(),
+    type: z.string(),
+    operationType: z.string().optional(),
+    instrumentUid: z.string().optional(),
+  });
+
+  const OperationsResponseSchema = z.object({
+    operations: z.array(OperationSchema),
+  });
+
+  type Operation = z.infer<typeof OperationSchema>;
+  type OperationsResponse = z.infer<typeof OperationsResponseSchema>;
+
+  const body: Record<string, unknown> = {
+    accountId,
+    from,
+    to,
+  };
+
+  if (figi) {
+    body.figi = figi;
+  }
+
+  const response = await withRetry(() =>
+    tinkoffRequest<OperationsResponse>(
+      '/tinkoff.public.invest.api.contract.v1.OperationsService/GetOperations',
+      token,
+      'POST',
+      body,
+      OperationsResponseSchema
+    )
+  );
+
+  return response.operations;
+}
