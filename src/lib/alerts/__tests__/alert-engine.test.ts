@@ -4,7 +4,7 @@
  * Basic tests to verify alert engine functionality
  */
 
-import { AlertEngine, MarketData, NewsData } from '../alert-engine';
+import { AlertEngine, MarketData, NewsData } from '../engine';
 import {
   Alert,
   createAlert,

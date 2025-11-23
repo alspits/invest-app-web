@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { AlertEngine, MarketData, NewsData } from '@/lib/alerts/alert-engine';
+import { AlertEngine, MarketData, NewsData } from '@/lib/alerts/engine';
 import { Alert, AlertTriggerEvent } from '@/types/alert';
 
 /**
