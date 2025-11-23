@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useAlertStore } from '@/stores/alertStore';
+import { useAlertStore } from '@/stores/alerts';
 import { AlertTriggerEvent } from '@/types/alert';
 
 /**

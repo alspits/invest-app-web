@@ -17,7 +17,7 @@ import {
   DEFAULT_DND_SETTINGS,
   DEFAULT_ANOMALY_CONFIG,
 } from '@/types/alert';
-import { useAlertStore } from '@/stores/alertStore';
+import { useAlertStore } from '@/stores/alerts';
 
 interface AlertBuilderProps {
   onClose: () => void;

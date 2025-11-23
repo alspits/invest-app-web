@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchPortfolio } from '@/lib/tinkoff-api';
 import { moneyValueToNumber, quotationToNumber } from '@/lib/tinkoff-api';
-import { calculateFactorAnalysis } from '@/lib/analytics/portfolio-analysis';
+import { calculateFactorAnalysis } from '@/lib/analytics/portfolio';
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();

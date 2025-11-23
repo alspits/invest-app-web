@@ -38,7 +38,7 @@ src/components/features/Alerts/
 ### Store
 
 ```typescript
-// src/stores/alertStore.ts
+// src/stores/alerts/
 useAlertStore() - Zustand store для управления оповещениями
 
 Методы:
