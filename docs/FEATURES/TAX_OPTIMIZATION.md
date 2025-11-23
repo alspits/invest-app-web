@@ -1,7 +1,14 @@
-# Tax Optimization Assistant
+# Tax Optimization Module (Phase 5.2)
 
 ## Overview
-Налоговый помощник — комплексный инструмент для расчета налогов, оптимизации налоговых обязательств и отслеживания льгот на долгосрочное владение ценными бумагами. Помогает инвесторам минимизировать налоговую нагрузку в рамках российского законодательства.
+Комплексный модуль налоговой оптимизации для российских инвесторов с автоматическим анализом портфеля, выявлением возможностей для снижения налогов, учётом СОИДН (Double Tax Avoidance Agreement), калькулятором ИИС и генерацией отчётности 3-НДФЛ.
+
+**Основные возможности:**
+- Tax Loss Harvesting с wash sale detection (30-дневное правило)
+- Расчёт налогов на дивиденды с учётом СОИДН
+- Калькулятор вычетов ИИС (Тип А и Тип Б)
+- Генерация 3-НДФЛ
+- Экспорт в XML, PDF, Excel
 
 ## Features
 
@@ -482,3 +489,273 @@ findHoldingPeriodAlerts(positions, 90);
 - Tax Report component with CSV export
 - Russian tax rules implementation
 - Comprehensive documentation
+
+### v2.0.0 (Phase 5.2 - 2025-11-22)
+- **Wash Sale Detection:** Реализовано правило 30 дней
+- **Dividend Tax Tracker:** Учёт СОИДН (US withholding + Russian tax)
+- **IIS Calculator:** Расчёт вычетов для Типа А и Типа Б
+- **Advanced Loss Harvesting:** Автоматические рекомендации с приоритетами
+- **3-НДФЛ Export:** Генерация XML для налоговой (в разработке)
+- **API Routes:** Новые endpoints для tax harvesting и reporting
+- **Store Integration:** Полная интеграция с Zustand taxStore
+- **Extended Types:** Новые типы для российского законодательства
+
+---
+
+# Phase 5.2 Additions (Новые возможности)
+
+## 1. Wash Sale Detection (Правило 30 дней)
+
+### Описание
+Автоматическая детекция нарушений wash sale — продажи актива с убытком с последующей покупкой в течение 30 дней.
+
+### Реализация
+
+**lib/tax/tax-loss-harvesting.ts:**
+
+```typescript
+export function detectWashSale(
+  figi: string,
+  saleDate: Date,
+  saleLoss: number,
+  saleQuantity: number,
+  recentPurchases: Array<{ date: Date; quantity: number }>
+): WashSaleRule
+
+export function wouldTriggerWashSale(
+  figi: string,
+  sellDate: Date,
+  recentPurchases: Array<{ date: Date; quantity: number }>,
+  futurePurchases?: Array<{ date: Date; quantity: number }>
+): boolean
+```
+
+### Пример
+```typescript
+const washSaleRisk = wouldTriggerWashSale(
+  'BBG000B9XRY4', // AAPL FIGI
+  new Date(),     // Продажа сегодня
+  [
+    { date: new Date('2024-11-15'), quantity: 10 }, // Покупка 7 дней назад
+  ]
+);
+
+console.log(washSaleRisk); // true — риск wash sale!
+```
+
+## 2. Dividend Tax Tracker
+
+### Описание
+Расчёт налогов на дивиденды с учётом СОИДН между Россией и США/другими странами.
+
+### Формула (США)
+- Дивиденды: $100
+- Удержано в США (30%): $30
+- НДФЛ РФ (13%): $13
+- Зачёт СОИДН: min($30, $13) = $13
+- **Доплата в РФ:** $0
+
+### Компонент
+
+**components/features/Tax/DividendTaxTracker.tsx:**
+
+```tsx
+import { DividendTaxTracker } from '@/components/features/Tax/DividendTaxTracker';
+
+<DividendTaxTracker />
+```
+
+Показывает:
+- Итоги по дивидендам за год
+- Разбивку по странам
+- Удержанные налоги
+- Зачёт по СОИДН
+- Итоговый налог к уплате
+
+## 3. IIS Calculator
+
+### Описание
+Калькулятор для выбора оптимального типа ИИС (Индивидуальный Инвестиционный Счёт).
+
+### Тип А - Вычет на взносы
+- Вычет: min(взнос, 400,000₽) × 13%
+- Максимум: 52,000₽/год
+- Подходит: Регулярные взносы, средняя доходность
+
+### Тип Б - Освобождение от налога на прибыль
+- Освобождение: 100% прибыли
+- Подходит: Высокая доходность (> 13% годовых)
+
+### Функция выбора
+
+```typescript
+import { recommendIISType } from '@/lib/tax/tax-loss-harvesting';
+
+const rec = recommendIISType(
+  yearlyContributions: 400000,
+  estimatedProfit: 500000,
+  yearsHeld: 3
+);
+
+console.log(rec.recommended);  // 'B'
+console.log(rec.explanation);  // "Тип Б выгоднее: экономия 65,000₽..."
+```
+
+## 4. Advanced Loss Harvesting
+
+### Новые возможности
+
+**Автоматические рекомендации:**
+- High priority: Убыток > 50,000₽
+- Medium priority: Wash sale скоро истекает (< 14 дней)
+- Low priority: Конец года приближается (< 60 дней)
+
+**Детализация:**
+- Доступные для продажи позиции (harvestable)
+- Заблокированные позиции (wash sale)
+- Potential tax savings (13% от убытка)
+
+### Компонент
+
+```tsx
+import TaxLossHarvesting from '@/components/features/Tax/TaxLossHarvesting';
+
+<TaxLossHarvesting />
+```
+
+## 5. Tax Reporting & 3-НДФЛ
+
+### Описание
+Генерация налоговой отчётности с экспортом в форматы для ФНС.
+
+### Функции
+- Сбор всех доходов за год (акции, дивиденды, купоны)
+- Учёт вычетов (ИИС, убытки)
+- Расчёт налоговой базы
+- Экспорт в XML (3-НДФЛ), PDF, Excel
+
+### Компонент
+
+```tsx
+import { TaxReporting } from '@/components/features/Tax/TaxReporting';
+
+<TaxReporting />
+```
+
+### API Routes (TODO)
+
+```typescript
+// Генерация отчёта
+GET /api/tax/report?accountId={id}&year={year}
+Response: TaxReportData
+
+// Экспорт
+POST /api/tax/export
+Body: { year, format: '3ndfl' | 'pdf' | 'excel', report }
+Response: File download
+```
+
+## Новые типы (types/tax.ts)
+
+### LossPosition
+```typescript
+interface LossPosition {
+  figi: string;
+  ticker: string;
+  name: string;
+  quantity: number;
+  averageCost: number;
+  currentPrice: number;
+  totalCost: number;
+  currentValue: number;
+  unrealizedLoss: number;
+  potentialTaxSavings: number; // 13% от убытка
+  washSaleRisk: boolean;
+  washSaleDate?: Date;
+  recommendedAction: 'harvest' | 'wait' | 'avoid';
+  reason: string;
+}
+```
+
+### DividendTaxInfo
+```typescript
+interface DividendTaxInfo {
+  id: string;
+  figi: string;
+  ticker: string;
+  paymentDate: Date;
+  amount: number;
+  currency: string;
+  countryOfOrigin: string;
+  withholdingTax: number;
+  withholdingRate: number;
+  russianTax: number; // 13% НДФЛ
+  dtaaCredit: number; // зачёт СОИДН
+  netTax: number;     // итого к уплате в РФ
+  netAmount: number;
+}
+```
+
+### IISDeduction
+```typescript
+interface IISDeduction {
+  type: 'A' | 'B';
+  year: number;
+  contributions?: number;      // Тип А
+  deduction?: number;          // Тип А: min(contributions, 400k) * 13%
+  profitExemption?: number;    // Тип Б: 100% освобождение
+}
+```
+
+## Константы налоговых ставок
+
+```typescript
+export const TAX_RATES = {
+  PERSONAL_INCOME: 0.13,              // 13% НДФЛ
+  US_DIVIDEND_WITHHOLDING: 0.30,      // 30% withholding США
+  EFFECTIVE_US_DIVIDEND: 0.13,        // 13% после СОИДН
+  IIS_TYPE_A_MAX_DEDUCTION: 52000,    // max 52k/год
+  IIS_TYPE_B_EXEMPTION: 1.0,          // 100% освобождение
+} as const;
+```
+
+## Известные ограничения
+
+1. **Wash Sale:** Базовая реализация. Не учитывает опционы и родственные инструменты.
+2. **СОИДН:** Полная поддержка только для США. Для других стран — упрощённая ставка 15%.
+3. **ИИС:** Требуется ручной ввод взносов.
+4. **3-НДФЛ XML:** В разработке. Требуется валидация формата ФНС.
+5. **Перенос убытков:** Не реализован автоматический учёт переноса на будущие годы.
+
+## Дальнейшее развитие
+
+- [ ] Полная генерация 3-НДФЛ XML
+- [ ] Интеграция с API брокеров для автоматического импорта дивидендов
+- [ ] Расширенная детекция wash sale (опционы, фьючерсы)
+- [ ] Календарь налоговых событий
+- [ ] Симуляция налоговых стратегий (What-If сценарии)
+- [ ] Автоматический расчёт ИИС на основе истории счёта
+
+## Безопасность
+
+⚠️ **ВАЖНО:**
+- Персональные данные (ИНН, адрес) НЕ хранятся на сервере
+- Все расчёты выполняются client-side
+- API требует аутентификации (TODO: добавить middleware)
+- Используйте HTTPS в production
+
+## Соответствие законодательству
+
+Модуль предоставляет **справочную информацию** и НЕ является налоговой консультацией. Перед принятием решений:
+
+1. Проконсультируйтесь с налоговым консультантом
+2. Проверьте актуальность налоговых ставок
+3. Убедитесь в корректности данных перед подачей декларации
+4. Сохраните подтверждающие документы
+
+## Полезные ссылки
+
+- [Налоговый кодекс РФ (глава 23 - НДФЛ)](https://www.consultant.ru/document/cons_doc_LAW_28165/)
+- [СОИДН РФ-США](https://www.consultant.ru/document/cons_doc_LAW_16755/)
+- [ИИС - ЦБ РФ](https://cbr.ru/finmarket/inv_acc/)
+- [3-НДФЛ формат](https://www.nalog.gov.ru/rn77/taxation/taxes/ndfl/)

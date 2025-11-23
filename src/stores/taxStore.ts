@@ -1,14 +1,44 @@
 import { create } from 'zustand';
-import { TaxableIncome, TaxReport, TaxInput } from '@/types/tax';
+import {
+  TaxableIncome,
+  TaxReport,
+  TaxInput,
+  TaxLossHarvestingReport,
+  DividendTaxInfo,
+  DividendTaxSummary,
+  IISAccount,
+  TaxRecommendation,
+  TaxReportData,
+  RussianTaxCalculation,
+} from '@/types/tax';
 
 interface TaxState {
-  // Tax data
+  // Tax data (legacy)
   taxableIncomes: TaxableIncome[];
   selectedYear: number;
   isLoading: boolean;
   error: string | null;
 
-  // Actions
+  // Loss harvesting (Phase 5.2)
+  lossHarvestingReport: TaxLossHarvestingReport | null;
+  isLoadingLossHarvesting: boolean;
+
+  // Dividend taxes
+  dividends: DividendTaxInfo[];
+  dividendSummaries: Record<number, DividendTaxSummary>; // year -> summary
+  isLoadingDividends: boolean;
+
+  // IIS accounts
+  iisAccounts: IISAccount[];
+  selectedIISAccount: IISAccount | null;
+  isLoadingIIS: boolean;
+
+  // Tax reporting
+  taxReports: Record<number, TaxReportData>; // year -> report
+  currentYearCalculation: RussianTaxCalculation | null;
+  isLoadingTaxReport: boolean;
+
+  // Legacy Actions
   addTaxableIncome: (income: TaxableIncome) => void;
   removeTaxableIncome: (id: string) => void;
   setSelectedYear: (year: number) => void;
@@ -16,13 +46,45 @@ interface TaxState {
   generateReport: (year: number) => TaxReport;
   exportReport: (report: TaxReport, format: 'csv' | 'pdf') => void;
   clearError: () => void;
+
+  // Phase 5.2 Actions - Loss Harvesting
+  loadLossHarvestingReport: (accountId: string) => Promise<void>;
+  clearLossHarvestingReport: () => void;
+
+  // Phase 5.2 Actions - Dividends
+  loadDividends: (accountId: string, year?: number) => Promise<void>;
+  loadDividendSummary: (accountId: string, year: number) => Promise<void>;
+
+  // Phase 5.2 Actions - IIS
+  loadIISAccounts: () => Promise<void>;
+  selectIISAccount: (accountId: string) => void;
+  updateIISContribution: (accountId: string, year: number, amount: number) => Promise<void>;
+
+  // Phase 5.2 Actions - Tax Reporting
+  generateTaxReportData: (accountId: string, year: number) => Promise<void>;
+  loadCurrentYearCalculation: (accountId: string) => Promise<void>;
+  exportTaxReportData: (year: number, format: '3ndfl' | 'pdf' | 'excel') => Promise<void>;
 }
 
 export const useTaxStore = create<TaxState>((set, get) => ({
+  // Legacy state
   taxableIncomes: [],
   selectedYear: new Date().getFullYear(),
   isLoading: false,
   error: null,
+
+  // Phase 5.2 state
+  lossHarvestingReport: null,
+  isLoadingLossHarvesting: false,
+  dividends: [],
+  dividendSummaries: {},
+  isLoadingDividends: false,
+  iisAccounts: [],
+  selectedIISAccount: null,
+  isLoadingIIS: false,
+  taxReports: {},
+  currentYearCalculation: null,
+  isLoadingTaxReport: false,
 
   addTaxableIncome: (income) => {
     set((state) => ({
@@ -92,6 +154,233 @@ export const useTaxStore = create<TaxState>((set, get) => ({
   },
 
   clearError: () => set({ error: null }),
+
+  // ============================================
+  // Phase 5.2 Actions - Loss Harvesting
+  // ============================================
+
+  loadLossHarvestingReport: async (accountId: string) => {
+    set({ isLoadingLossHarvesting: true });
+
+    try {
+      const response = await fetch(`/api/tax/harvesting?accountId=${accountId}`);
+
+      if (!response.ok) {
+        throw new Error('Failed to load loss harvesting report');
+      }
+
+      const report: TaxLossHarvestingReport = await response.json();
+
+      set({ lossHarvestingReport: report });
+    } catch (error) {
+      console.error('Error loading loss harvesting report:', error);
+      set({ lossHarvestingReport: null });
+    } finally {
+      set({ isLoadingLossHarvesting: false });
+    }
+  },
+
+  clearLossHarvestingReport: () => {
+    set({ lossHarvestingReport: null });
+  },
+
+  // ============================================
+  // Phase 5.2 Actions - Dividends
+  // ============================================
+
+  loadDividends: async (accountId: string, year?: number) => {
+    set({ isLoadingDividends: true });
+
+    try {
+      const params = new URLSearchParams({ accountId });
+      if (year) params.append('year', year.toString());
+
+      const response = await fetch(`/api/tax/dividends?${params}`);
+
+      if (!response.ok) {
+        throw new Error('Failed to load dividends');
+      }
+
+      const dividends: DividendTaxInfo[] = await response.json();
+
+      set({ dividends });
+    } catch (error) {
+      console.error('Error loading dividends:', error);
+      set({ dividends: [] });
+    } finally {
+      set({ isLoadingDividends: false });
+    }
+  },
+
+  loadDividendSummary: async (accountId: string, year: number) => {
+    set({ isLoadingDividends: true });
+
+    try {
+      const response = await fetch(
+        `/api/tax/dividends/summary?accountId=${accountId}&year=${year}`
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to load dividend summary');
+      }
+
+      const summary: DividendTaxSummary = await response.json();
+
+      set((state) => ({
+        dividendSummaries: {
+          ...state.dividendSummaries,
+          [year]: summary,
+        },
+      }));
+    } catch (error) {
+      console.error('Error loading dividend summary:', error);
+    } finally {
+      set({ isLoadingDividends: false });
+    }
+  },
+
+  // ============================================
+  // Phase 5.2 Actions - IIS
+  // ============================================
+
+  loadIISAccounts: async () => {
+    set({ isLoadingIIS: true });
+
+    try {
+      const response = await fetch('/api/tax/iis');
+
+      if (!response.ok) {
+        throw new Error('Failed to load IIS accounts');
+      }
+
+      const accounts: IISAccount[] = await response.json();
+
+      set({
+        iisAccounts: accounts,
+        selectedIISAccount: accounts.length > 0 ? accounts[0] : null,
+      });
+    } catch (error) {
+      console.error('Error loading IIS accounts:', error);
+      set({ iisAccounts: [], selectedIISAccount: null });
+    } finally {
+      set({ isLoadingIIS: false });
+    }
+  },
+
+  selectIISAccount: (accountId: string) => {
+    const account = get().iisAccounts.find((acc) => acc.id === accountId);
+    if (account) {
+      set({ selectedIISAccount: account });
+    }
+  },
+
+  updateIISContribution: async (accountId: string, year: number, amount: number) => {
+    try {
+      const response = await fetch('/api/tax/iis/contribution', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accountId, year, amount }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update IIS contribution');
+      }
+
+      // Reload IIS accounts to get updated data
+      await get().loadIISAccounts();
+    } catch (error) {
+      console.error('Error updating IIS contribution:', error);
+      throw error;
+    }
+  },
+
+  // ============================================
+  // Phase 5.2 Actions - Tax Reporting
+  // ============================================
+
+  generateTaxReportData: async (accountId: string, year: number) => {
+    set({ isLoadingTaxReport: true });
+
+    try {
+      const response = await fetch(
+        `/api/tax/report?accountId=${accountId}&year=${year}`
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to generate tax report');
+      }
+
+      const report: TaxReportData = await response.json();
+
+      set((state) => ({
+        taxReports: {
+          ...state.taxReports,
+          [year]: report,
+        },
+      }));
+    } catch (error) {
+      console.error('Error generating tax report:', error);
+    } finally {
+      set({ isLoadingTaxReport: false });
+    }
+  },
+
+  loadCurrentYearCalculation: async (accountId: string) => {
+    set({ isLoadingTaxReport: true });
+
+    try {
+      const response = await fetch(
+        `/api/tax/calculation?accountId=${accountId}`
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to load tax calculation');
+      }
+
+      const calculation: RussianTaxCalculation = await response.json();
+
+      set({ currentYearCalculation: calculation });
+    } catch (error) {
+      console.error('Error loading tax calculation:', error);
+      set({ currentYearCalculation: null });
+    } finally {
+      set({ isLoadingTaxReport: false });
+    }
+  },
+
+  exportTaxReportData: async (year: number, format: '3ndfl' | 'pdf' | 'excel') => {
+    try {
+      const report = get().taxReports[year];
+
+      if (!report) {
+        throw new Error('Tax report not found for year ' + year);
+      }
+
+      const response = await fetch('/api/tax/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ year, format, report }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to export tax report');
+      }
+
+      // Download file
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `tax-report-${year}.${format === '3ndfl' ? 'xml' : format}`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Error exporting tax report:', error);
+      throw error;
+    }
+  },
 }));
 
 /**
