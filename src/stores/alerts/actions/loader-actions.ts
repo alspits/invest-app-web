@@ -1,15 +1,19 @@
+import { StoreApi } from 'zustand';
+import { AlertStore } from '../types';
 import {
   mockAlerts,
   mockTriggerHistory,
   mockStatistics,
 } from '../mock-data';
 
+// Type aliases for Zustand store functions
+type SetState = StoreApi<AlertStore>['setState'];
+
 /**
  * Loads all alerts from API or mock data
  */
 export async function loadAlertsAction(
-  set: any,
-  get: any
+  set: SetState
 ): Promise<void> {
   set({ isLoadingAlerts: true, error: null });
 
@@ -57,10 +61,16 @@ export async function loadAlertsAction(
  * Loads trigger history for the specified number of days
  */
 export async function loadTriggerHistoryAction(
-  set: any,
-  get: any,
+  set: SetState,
   days: number = 30
 ): Promise<void> {
+  // Validate days parameter
+  if (!Number.isFinite(days) || days <= 0) {
+    throw new Error(
+      `Invalid days parameter: must be a positive finite number, got ${days}`
+    );
+  }
+
   set({ isLoadingHistory: true, error: null });
 
   try {
@@ -107,8 +117,7 @@ export async function loadTriggerHistoryAction(
  * Loads alert statistics
  */
 export async function loadStatisticsAction(
-  set: any,
-  get: any
+  set: SetState
 ): Promise<void> {
   try {
     // Check if in development mode

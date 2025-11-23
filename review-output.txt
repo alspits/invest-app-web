@@ -1,0 +1,86 @@
+Starting CodeRabbit review in plain text mode...
+
+Connecting to review service
+Setting up
+Analyzing
+Reviewing
+
+============================================================================
+File: docs/FEATURES/INTELLIGENT_ALERTS.md
+Line: 719 to 720
+Type: potential_issue
+
+Comment:
+Fix date inconsistency in footer.
+
+The creation date is listed as "2024-11-23" but the update date is "2025-11-23". Update the creation date to match:
+
+-Документация создана: 2024-11-23
++Документация создана: 2025-11-23
+
+Prompt for AI Agent:
+In docs/FEATURES/INTELLIGENT_ALERTS.md around lines 719-720, the footer currently shows a creation date of "2024-11-23" while the last updated date is "2025-11-23"; update the creation date to "2025-11-23" so both dates match, ensuring the footer reflects the corrected creation date string exactly and preserving surrounding text/formatting.
+
+
+
+============================================================================
+File: src/lib/intelligence/patterns/analyzers/statistics-analyzer.ts
+Line: 50 to 53
+Type: potential_issue
+
+Comment:
+Returning 0% success rate when all patterns are break-even is misleading.
+
+When successCount + failureCount = 0 (all patterns are break-even with zero profit/loss), the function returns successRate = 0%. This is ambiguous and could mislead consumers:
+- 0% typically means "no successes, all failures"
+- But in this case it means "no decisive outcomes, all break-even"
+
+Additionally, the return type doesn't include a breakEvenCount field, making it impossible for consumers to understand how many patterns were excluded from the calculation.
+
+
+
+Solution 1 (Recommended): Return null or undefined for indeterminate cases and add breakEvenCount.
+
++    const breakEvenCount = categoryPatterns.filter(
++      (p) => p.metrics.profitLoss === 0
++    ).length;
++
+     const totalCount = categoryPatterns.length;
+     const successRate =
+       successCount + failureCount > 0
+         ? (successCount / (successCount + failureCount)) * 100
+-        : 0;
++        : null;
+
+     return {
+       category,
+       totalCount,
+       successCount,
+       failureCount,
++      breakEvenCount,
+       successRate,
+       averageProfitLoss,
+       averageTimeToComplete,
+       totalVolume,
+       commonTriggers,
+     };
+
+
+Note: This requires updating the PatternStats type to include breakEvenCount: number and change successRate to successRate: number | null.
+
+Solution 2: Add documentation clarifying that 0% means indeterminate.
+
+If changing the return type is not feasible, at minimum add a comment explaining the edge case:
+
+     const successRate =
+       successCount + failureCount > 0
+         ? (successCount / (successCount + failureCount)) * 100
+-        : 0;
++        : 0; // 0 indicates no decisive patterns (all break-even)
+
+Prompt for AI Agent:
+In src/lib/intelligence/patterns/analyzers/statistics-analyzer.ts around lines 50-53, the successRate is set to 0 when successCount + failureCount === 0 which is misleading for all break-even cases; update the function and its types to add breakEvenCount: number to PatternStats and change successRate to number | null, compute breakEvenCount = total - successCount - failureCount, and set successRate = null when successCount + failureCount === 0 otherwise calculate percentage as before; also update any callers and tests to handle nullable successRate and to consume the new breakEvenCount field.
+
+
+
+Review completed ✔

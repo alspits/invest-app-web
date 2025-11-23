@@ -13,6 +13,26 @@ import {
 } from './state-helpers';
 
 /**
+ * Safely coerce a value to a valid Date instance
+ * @param value - Potential date value (Date, string, number, or undefined)
+ * @returns Valid Date instance or undefined if invalid/missing
+ */
+function coerceToValidDate(value: Date | string | number | undefined): Date | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  // If already a Date instance, validate it
+  if (value instanceof Date) {
+    return isNaN(value.getTime()) ? undefined : value;
+  }
+
+  // Try to construct Date from string or number
+  const date = new Date(value);
+  return isNaN(date.getTime()) ? undefined : date;
+}
+
+/**
  * Main alert evaluation engine
  * Orchestrates alert evaluation using modular evaluators
  */
@@ -36,8 +56,18 @@ export class AlertEngine {
       return { triggered: false };
     }
 
+    // Validate ticker match between alert and market data
+    if (!marketData || marketData.ticker !== alert.ticker) {
+      console.warn(
+        `[Alert Engine] Ticker mismatch for alert ${alert.id}: ` +
+        `expected '${alert.ticker}', received '${marketData?.ticker || 'undefined'}'`
+      );
+      return { triggered: false };
+    }
+
     // Check if alert has expired
-    if (alert.expiresAt && new Date() > alert.expiresAt) {
+    const expiryDate = coerceToValidDate(alert.expiresAt);
+    if (expiryDate && new Date() > expiryDate) {
       return { triggered: false };
     }
 
@@ -63,40 +93,81 @@ export class AlertEngine {
     let triggerReason = '';
     let conditionsMet: string[] = [];
 
-    // Evaluate based on alert type
-    switch (alert.type) {
-      case 'THRESHOLD':
-      case 'MULTI_CONDITION':
-        ({ triggered, triggerReason, conditionsMet } = evaluateConditions(
-          alert.conditionGroups,
-          marketData,
-          newsData
-        ));
-        break;
-
-      case 'NEWS_TRIGGERED':
-        ({ triggered, triggerReason, conditionsMet } = evaluateNewsTrigger(
-          newsData
-        ));
-        break;
-
-      case 'ANOMALY':
-        ({ triggered, triggerReason, conditionsMet } = evaluateAnomaly(
-          marketData,
-          newsData,
-          historicalData,
-          alert.anomalyConfig || {
-            priceChangeThreshold: 15,
-            volumeSpikeMultiplier: 5,
-            statisticalSigma: 2,
-            requiresNoNews: true,
-            newsLookbackHours: 24,
+    // Evaluate based on alert type with error handling
+    try {
+      switch (alert.type) {
+        case 'THRESHOLD':
+        case 'MULTI_CONDITION':
+          try {
+            ({ triggered, triggerReason, conditionsMet } = evaluateConditions(
+              alert.conditionGroups,
+              marketData,
+              newsData
+            ));
+          } catch (error) {
+            console.error(
+              `[Alert Engine] Error evaluating conditions for alert ${alert.id} (${alert.type}):`,
+              error
+            );
+            triggered = false;
+            triggerReason = `evaluator_error: ${error instanceof Error ? error.message : 'unknown error'}`;
+            conditionsMet = [];
           }
-        ));
-        break;
+          break;
 
-      default:
-        console.warn(`[Alert Engine] Unknown alert type: ${alert.type}`);
+        case 'NEWS_TRIGGERED':
+          try {
+            ({ triggered, triggerReason, conditionsMet } = evaluateNewsTrigger(
+              newsData
+            ));
+          } catch (error) {
+            console.error(
+              `[Alert Engine] Error evaluating news trigger for alert ${alert.id}:`,
+              error
+            );
+            triggered = false;
+            triggerReason = `evaluator_error: ${error instanceof Error ? error.message : 'unknown error'}`;
+            conditionsMet = [];
+          }
+          break;
+
+        case 'ANOMALY':
+          try {
+            ({ triggered, triggerReason, conditionsMet } = evaluateAnomaly(
+              marketData,
+              newsData,
+              historicalData,
+              alert.anomalyConfig || {
+                priceChangeThreshold: 15,
+                volumeSpikeMultiplier: 5,
+                statisticalSigma: 2,
+                requiresNoNews: true,
+                newsLookbackHours: 24,
+              }
+            ));
+          } catch (error) {
+            console.error(
+              `[Alert Engine] Error evaluating anomaly for alert ${alert.id}:`,
+              error
+            );
+            triggered = false;
+            triggerReason = `evaluator_error: ${error instanceof Error ? error.message : 'unknown error'}`;
+            conditionsMet = [];
+          }
+          break;
+
+        default:
+          console.warn(`[Alert Engine] Unknown alert type: ${alert.type}`);
+      }
+    } catch (error) {
+      // Catch any unexpected errors from the switch statement itself
+      console.error(
+        `[Alert Engine] Unexpected error in alert evaluation for alert ${alert.id}:`,
+        error
+      );
+      triggered = false;
+      triggerReason = `switch_error: ${error instanceof Error ? error.message : 'unknown error'}`;
+      conditionsMet = [];
     }
 
     if (triggered) {

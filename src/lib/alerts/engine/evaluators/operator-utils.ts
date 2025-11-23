@@ -87,6 +87,10 @@ export function getFieldValue(
       return marketData.price;
 
     case 'PRICE_CHANGE':
+      // Guard against division by zero and non-finite values
+      if (marketData.previousClose === 0 || !Number.isFinite(marketData.previousClose)) {
+        return 0;
+      }
       return (
         ((marketData.price - marketData.previousClose) / marketData.previousClose) *
         100

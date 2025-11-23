@@ -15,7 +15,7 @@ import type { TradePair, PatternDetectionConfig } from '@/types/trading-pattern'
  * ```typescript
  * const isStrategic = isStrategicTrade(tradePair, config);
  * if (isStrategic) {
- *   console.log('Обнаружена стратегическая сделка');
+ *   console.log('Strategic trade detected');
  * }
  * ```
  */

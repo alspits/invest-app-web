@@ -6,6 +6,31 @@ import { MarketData, NewsData } from '../types';
 import { compareValues, operatorToSymbol, getFieldValue } from './operator-utils';
 
 /**
+ * Safely format a field value for display
+ * @param value - Value to format
+ * @returns formatted string
+ */
+function safeFormatValue(value: unknown): string {
+  if (value === null || value === undefined) {
+    return 'N/A';
+  }
+
+  // If already a finite number, format with 2 decimals
+  if (typeof value === 'number' && isFinite(value)) {
+    return value.toFixed(2);
+  }
+
+  // Try converting to number
+  const numValue = Number(value);
+  if (!isNaN(numValue) && isFinite(numValue)) {
+    return numValue.toFixed(2);
+  }
+
+  // Fallback to string representation
+  return String(value);
+}
+
+/**
  * Evaluate condition groups with boolean logic
  * @param conditionGroups - Array of condition groups to evaluate
  * @param marketData - Market data
@@ -68,7 +93,7 @@ export function evaluateSingleCondition(
 
   const description = `${condition.field} ${operatorToSymbol(
     condition.operator
-  )} ${condition.value} (actual: ${fieldValue.toFixed(2)})`;
+  )} ${condition.value} (actual: ${safeFormatValue(fieldValue)})`;
 
   return { met, description };
 }

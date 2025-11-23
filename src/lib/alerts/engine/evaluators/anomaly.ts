@@ -27,9 +27,10 @@ export function evaluateAnomaly(
   const conditionsMet: string[] = [];
 
   // 1. Check price change anomaly
-  const priceChange =
-    ((marketData.price - marketData.previousClose) / marketData.previousClose) *
-    100;
+  // Guard against division by zero
+  const priceChange = marketData.previousClose === 0
+    ? 0
+    : ((marketData.price - marketData.previousClose) / marketData.previousClose) * 100;
   const isPriceAnomaly = Math.abs(priceChange) >= finalConfig.priceChangeThreshold;
 
   if (isPriceAnomaly) {
@@ -69,10 +70,11 @@ export function evaluateAnomaly(
 
   if (finalConfig.requiresNoNews && hasRecentNews) {
     // Anomaly not triggered because news explains the movement
+    // Preserve detected conditions for observability/debugging
     return {
       triggered: false,
       triggerReason: 'Anomaly detected but explained by news',
-      conditionsMet: [],
+      conditionsMet, // Return accumulated conditions instead of empty array
     };
   }
 
@@ -92,11 +94,16 @@ export function evaluateAnomaly(
  * Calculate mean and standard deviation
  * @param data - Historical price data
  * @returns mean and standard deviation
+ * @throws {Error} If data array is empty
  */
 export function calculateStatistics(data: PriceDataPoint[]): {
   mean: number;
   stdDev: number;
 } {
+  if (data.length === 0) {
+    throw new Error('calculateStatistics requires at least one data point');
+  }
+
   const prices = data.map((d) => d.price);
   const mean = prices.reduce((sum, p) => sum + p, 0) / prices.length;
 

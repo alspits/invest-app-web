@@ -136,7 +136,9 @@ interface PatternStatCardProps {
     category: PatternCategory;
     totalCount: number;
     successCount: number;
-    successRate: number;
+    failureCount: number;
+    breakEvenCount: number;
+    successRate: number | null;
     averageProfitLoss: number;
   };
 }
@@ -163,17 +165,21 @@ function PatternStatCard({ stat }: PatternStatCardProps) {
         {/* Success Rate */}
         <div className="flex items-center justify-between text-sm">
           <span className="text-gray-500 dark:text-gray-400">Успешность</span>
-          <span
-            className={`font-medium ${
-              stat.successRate > 60
-                ? 'text-green-500'
-                : stat.successRate > 40
-                ? 'text-yellow-500'
-                : 'text-red-500'
-            }`}
-          >
-            {stat.successRate.toFixed(0)}%
-          </span>
+          {stat.successRate !== null ? (
+            <span
+              className={`font-medium ${
+                stat.successRate > 60
+                  ? 'text-green-500'
+                  : stat.successRate > 40
+                  ? 'text-yellow-500'
+                  : 'text-red-500'
+              }`}
+            >
+              {stat.successRate.toFixed(0)}%
+            </span>
+          ) : (
+            <span className="font-medium text-gray-400 dark:text-gray-500">Н/Д</span>
+          )}
         </div>
 
         {/* Average P&L */}
@@ -193,11 +199,13 @@ function PatternStatCard({ stat }: PatternStatCardProps) {
           </span>
         </div>
 
-        {/* Win/Loss Count */}
+        {/* Win/Loss/Break-Even Count */}
         <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-500 dark:text-gray-400">Прибыль / Убыток</span>
+          <span className="text-gray-500 dark:text-gray-400">
+            Прибыль / Убыток / Ноль
+          </span>
           <span className="font-medium text-gray-700 dark:text-gray-300">
-            {stat.successCount} / {stat.totalCount - stat.successCount}
+            {stat.successCount} / {stat.failureCount} / {stat.breakEvenCount}
           </span>
         </div>
       </div>

@@ -104,15 +104,15 @@ export const useAlertStore = create<AlertStore>((set, get) => ({
   // ========================================================================
 
   loadAlerts: async () => {
-    await loadAlertsAction(set, get);
+    await loadAlertsAction(set);
   },
 
   loadTriggerHistory: async (days?: number) => {
-    await loadTriggerHistoryAction(set, get, days);
+    await loadTriggerHistoryAction(set, days);
   },
 
   loadStatistics: async () => {
-    await loadStatisticsAction(set, get);
+    await loadStatisticsAction(set);
   },
 
   // ========================================================================

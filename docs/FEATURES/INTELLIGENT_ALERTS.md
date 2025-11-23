@@ -49,14 +49,50 @@ src/stores/alerts/
 └── index.ts                         # Public API
 ```
 
+**Переиспользуемые HTTP утилиты:**
+```
+src/lib/http/                        # Переиспользуются во всех stores
+├── error-classifier.ts              # Классификация ошибок (NETWORK, AUTH, TIMEOUT)
+├── fetch-utils.ts                   # Timeout, backoff, JSON parsing
+├── retry.ts                         # Retry с exponential backoff
+└── index.ts                         # Public API
+```
+
 **Преимущества модульной архитектуры:**
 - ✅ Каждый evaluator тестируется независимо
 - ✅ Легко добавлять новые типы триггеров
 - ✅ Переиспользуемый SentimentAnalyzer для других функций
 - ✅ Простая поддержка state-helpers (DND, cooldown)
+- ✅ HTTP утилиты переиспользуются в других stores (analytics, portfolio, etc.)
 - ✅ Использует ~80% меньше контекста для AI Code Assistant
+- ✅ **Graceful error handling** - исключения в evaluator не прерывают оценку других алертов
 
 Подробнее о модульной архитектуре → [CLAUDE.md](../../CLAUDE.md#-modular-architecture-nov-2025-refactoring)
+
+### Обработка ошибок
+
+Alert Engine реализует graceful error handling для evaluator'ов:
+
+```typescript
+// Каждый evaluator обернут в try-catch
+case 'THRESHOLD':
+  try {
+    ({ triggered, triggerReason, conditionsMet } = evaluateConditions(...));
+  } catch (error) {
+    console.error(`[Alert Engine] Error evaluating conditions for alert ${alert.id}:`, error);
+    triggered = false;
+    triggerReason = `evaluator_error: ${error.message}`;
+    conditionsMet = [];
+  }
+```
+
+**Поведение при ошибках:**
+- ❌ Исключение в evaluator не прерывает весь процесс оценки
+- ✅ Возвращается graceful non-triggering результат: `{ triggered: false, triggerReason: 'evaluator_error: ...' }`
+- 📝 Ошибка логируется с контекстом (alert.id, alert.type)
+- 🔄 Другие алерты продолжают оцениваться нормально
+
+Это гарантирует, что единичная ошибка в одном типе триггера не сломает всю систему оповещений.
 
 ### Типы оповещений
 
@@ -86,20 +122,22 @@ src/components/features/Alerts/
 ### Store
 
 ```typescript
-// src/stores/alerts/
+// src/stores/alerts/ (модульная структура)
 useAlertStore() - Zustand store для управления оповещениями
 
-Методы:
-- addAlert() - Создать новое оповещение
-- updateAlert() - Обновить существующее
-- deleteAlert() - Удалить оповещение
-- toggleAlert() - Вкл/выкл оповещение
-- snoozeAlert() - Отложить на N часов
-- dismissAlert() - Отклонить событие
-- evaluateAlerts() - Проверить все оповещения
-- loadAlerts() - Загрузить из API
-- loadTriggerHistory() - История срабатываний
-- loadStatistics() - Статистика оповещений
+Методы (модульно разделены по actions/):
+- addAlert() - Создать новое оповещение (crud-actions.ts)
+- updateAlert() - Обновить существующее (crud-actions.ts)
+- deleteAlert() - Удалить оповещение (crud-actions.ts)
+- toggleAlert() - Вкл/выкл оповещение (alert-actions.ts)
+- snoozeAlert() - Отложить на N часов (alert-actions.ts)
+- dismissAlert() - Отклонить событие (alert-actions.ts)
+- deleteAll() - Удалить все оповещения (bulk-actions.ts)
+- toggleAll() - Вкл/выкл все оповещения (bulk-actions.ts)
+- evaluateAlerts() - Проверить все оповещения (evaluation-actions.ts)
+- loadAlerts() - Загрузить из API (loader-actions.ts)
+- loadTriggerHistory() - История срабатываний (loader-actions.ts)
+- loadStatistics() - Статистика оповещений (loader-actions.ts)
 ```
 
 ### API Routes
@@ -120,17 +158,25 @@ GET    /api/alerts/statistics       - Статистика оповещений
 // src/lib/alerts/engine/ (модульная структура)
 
 AlertEngine - Основной движок оценки оповещений
-├── evaluateAlert() - Оценить одно оповещение (alert-engine.ts)
-├── evaluateConditions() - Проверить условия с AND/OR логикой (evaluators/conditions.ts)
-├── evaluateNewsTrigger() - Проверить новостные триггеры (evaluators/news-trigger.ts)
-└── evaluateAnomaly() - Детектор аномалий (evaluators/anomaly.ts)
+├── evaluateAlert() - Оценить одно оповещение (engine/alert-engine.ts)
+├── evaluateConditions() - Проверить условия с AND/OR логикой (engine/evaluators/conditions.ts)
+├── evaluateNewsTrigger() - Проверить новостные триггеры (engine/evaluators/news-trigger.ts)
+└── evaluateAnomaly() - Детектор аномалий (engine/evaluators/anomaly.ts)
 
-AlertBatcher - Батчинг оповещений (batcher.ts)
-├── addToBatch() - Добавить в пакет
-└── flushAll() - Отправить все пакеты
+Вспомогательные утилиты:
+├── isInDNDPeriod() - Проверка режима "Не беспокоить" (engine/state-helpers.ts)
+├── isInCooldown() - Проверка cooldown периода (engine/state-helpers.ts)
+└── hasReachedDailyLimit() - Проверка дневного лимита (engine/state-helpers.ts)
 
-SentimentAnalyzer - Анализ новостного сентимента (sentiment-analyzer.ts)
+AlertBatcher - Батчинг оповещений (engine/batcher.ts)
+├── addToBatch() - Добавить в пакет (с error handling в таймере)
+└── flushAll() - Отправить все пакеты (обрабатывает все батчи даже при ошибках)
+
+SentimentAnalyzer - Анализ новостного сентимента (engine/sentiment-analyzer.ts)
 └── calculateSentiment() - Расчет среднего сентимента
+
+Используйте index export:
+import { AlertEngine, AlertBatcher, SentimentAnalyzer } from '@/lib/alerts/engine';
 ```
 
 ## Типы данных
@@ -216,7 +262,7 @@ interface DNDSettings {
 ### 1. Простое пороговое оповещение
 
 ```typescript
-import { useAlertStore } from '@/stores/alertStore';
+import { useAlertStore } from '@/stores/alerts';
 import { createAlert, createConditionGroup, createAlertCondition } from '@/types/alert';
 
 const alertStore = useAlertStore();
@@ -290,7 +336,7 @@ alertStore.addAlert({
 'use client';
 
 import { useEffect } from 'react';
-import { useAlertStore } from '@/stores/alertStore';
+import { useAlertStore } from '@/stores/alerts';
 import AlertList from '@/components/features/Alerts/AlertList';
 import AlertHistory from '@/components/features/Alerts/AlertHistory';
 
@@ -360,7 +406,7 @@ Alert Engine автоматически использует NewsAPI для:
 ```typescript
 // Автоматически используется внутри AlertEngine
 import { NewsItem } from '@/lib/news-api';
-import { SentimentAnalyzer } from '@/lib/alerts/alert-engine';
+import { SentimentAnalyzer } from '@/lib/alerts/engine';
 
 // Расчет среднего сентимента из новостей
 const sentiment = SentimentAnalyzer.calculateSentiment(newsArticles);
@@ -398,27 +444,32 @@ tickers.forEach(ticker => {
 ### 1. Проверки перед оценкой
 
 ```typescript
+// src/lib/alerts/engine/alert-engine.ts
 // AlertEngine.evaluateAlert() выполняет проверки:
 1. Статус оповещения === ACTIVE
 2. Оповещение не истекло (expiresAt)
-3. Не в режиме DND
-4. Не в cooldown периоде
-5. Не превышен дневной лимит (maxPerDay)
+3. Не в режиме DND (engine/state-helpers.ts: isInDNDPeriod)
+4. Не в cooldown периоде (engine/state-helpers.ts: isInCooldown)
+5. Не превышен дневной лимит (engine/state-helpers.ts: hasReachedDailyLimit)
 ```
 
 ### 2. Оценка по типу
 
 ```typescript
+// src/lib/alerts/engine/alert-engine.ts
 switch (alert.type) {
   case 'THRESHOLD':
   case 'MULTI_CONDITION':
     // Проверяем все conditionGroups
     // Поддерживаем AND/OR логику
+    // → engine/evaluators/conditions.ts: evaluateConditions()
     break;
 
   case 'NEWS_TRIGGERED':
     // Проверяем средний сентимент новостей
     // Триггер при sentiment < -0.3
+    // → engine/evaluators/news-trigger.ts: evaluateNewsTrigger()
+    // → engine/sentiment-analyzer.ts: SentimentAnalyzer.calculateSentiment()
     break;
 
   case 'ANOMALY':
@@ -427,6 +478,7 @@ switch (alert.type) {
     // 2. Всплеск объема > multiplier
     // 3. Статистический выброс > sigma
     // 4. Отсутствие новостей (если requiresNoNews)
+    // → engine/evaluators/anomaly.ts: evaluateAnomaly()
     break;
 }
 ```
@@ -455,8 +507,11 @@ switch (alert.type) {
 ### Как работает
 
 ```typescript
+// src/lib/alerts/engine/batcher.ts
 // AlertBatcher накапливает события в течение окна (default: 15 мин)
 // Затем отправляет все события одним уведомлением
+
+import { AlertBatcher } from '@/lib/alerts/engine';
 
 const batcher = new AlertBatcher();
 
@@ -490,11 +545,15 @@ const dndSettings: DNDSettings = {
 ### Проверка DND
 
 ```typescript
-// AlertEngine.isInDNDPeriod() автоматически:
+// src/lib/alerts/engine/state-helpers.ts
+// isInDNDPeriod() автоматически:
 1. Проверяет день недели
 2. Проверяет текущее время
-3. Поддерживает overnight периоды
+3. Поддерживает overnight периоды (22:00 → 08:00)
 4. Блокирует срабатывания в DND
+
+import { isInDNDPeriod } from '@/lib/alerts/engine';
+const inDND = isInDNDPeriod(dndSettings, new Date());
 ```
 
 ## Сентимент-анализ
@@ -502,7 +561,10 @@ const dndSettings: DNDSettings = {
 ### Простая реализация на ключевых словах
 
 ```typescript
+// src/lib/alerts/engine/sentiment-analyzer.ts
 // SentimentAnalyzer использует русские ключевые слова
+import { SentimentAnalyzer } from '@/lib/alerts/engine';
+
 const negativeKeywords = [
   'падение', 'снижение', 'убыток', 'кризис',
   'банкротство', 'риск', 'потери', 'долг'
@@ -532,6 +594,8 @@ interface AlertStatistics {
 }
 
 // Загрузка статистики
+// src/stores/alerts/actions/loader-actions.ts
+import { useAlertStore } from '@/stores/alerts';
 const { loadStatistics, statistics } = useAlertStore();
 await loadStatistics();
 ```
@@ -541,13 +605,17 @@ await loadStatistics();
 В режиме разработки без API токена автоматически используются моковые данные:
 
 ```typescript
-// src/stores/alertStore.ts содержит:
+// src/stores/alerts/mock-data.ts
+// Изолированные моковые данные (200 строк):
 - 3 примера оповещений (SBER, GAZP, TMOS)
 - 2 события в истории
 - Моковую статистику
 
 // Автоматически активируется при:
+// src/stores/alerts/alert-store.ts
 process.env.NODE_ENV === 'development' && !hasToken
+
+import { mockAlerts, mockTriggerEvents, mockStatistics } from './mock-data';
 ```
 
 ## Валидация данных
@@ -575,6 +643,37 @@ const validated = AlertSchema.parse(body);
 4. **Нет email уведомлений**: Флаг `notifyViaEmail` не реализован
 5. **Нет исторических данных для RSI/MA**: Требуется интеграция с источником технических индикаторов
 
+### Недавние улучшения
+
+- [x] **Улучшенная обработка ошибок в AlertBatcher** (Nov 2025)
+  - `flushAll()`: Обрабатывает все батчи даже если callback выбрасывает исключение
+  - `addToBatch()`: Гарантирует очистку батчей в `finally` блоке при ошибках в таймерах
+  - Логирование ошибок callback с продолжением обработки оставшихся батчей
+  - Предотвращает утечки памяти при ошибках в batch processing
+
+- [x] **Улучшенная observability в Anomaly Detector** (Nov 2025)
+  - Исправлен `evaluators/anomaly.ts`: сохраняются `conditionsMet` даже когда аномалия не срабатывает из-за новостей
+  - Раньше: при раннем возврате (новости объясняют движение) терялась информация об обнаруженных условиях
+  - Теперь: возвращаются все накопленные условия (price change, volume spike, statistical outlier) для debugging/мониторинга
+  - Пример: `{triggered: false, triggerReason: "Anomaly detected but explained by news", conditionsMet: ["Price change: 18.5%", "Volume spike: 6.2x"]}`
+  - Улучшает анализ ложных срабатываний и тюнинг порогов
+
+- [x] **Валидация ticker в Alert Engine** (Nov 2025)
+  - Добавлена проверка соответствия `marketData.ticker` и `alert.ticker` в [alert-engine.ts:59-66](../../src/lib/alerts/engine/alert-engine.ts#L59-L66)
+  - Предотвращает оценку алерта с неправильными рыночными данными
+  - Логирует предупреждение с `alert.id`, ожидаемым и полученным ticker
+  - Возвращает `{triggered: false}` при несоответствии или отсутствии `marketData`
+  - Покрыто unit-тестами: `alert-engine.test.ts` (тесты ticker mismatch и missing marketData)
+
+- [x] **Защита от деления на ноль и NaN в Anomaly Detector** (Nov 2025)
+  - **Проблема 1**: Расчет `priceChange` мог производить `Infinity/NaN` при `previousClose = 0`
+  - **Решение**: Добавлена проверка `previousClose === 0` → возвращает `priceChange = 0` вместо деления на ноль
+  - **Проблема 2**: `calculateStatistics()` возвращал `NaN` при пустом массиве данных
+  - **Решение**: Добавлена явная проверка `data.length === 0` → выбрасывается ошибка `'calculateStatistics requires at least one data point'`
+  - **Локация**: [anomaly.ts:31-33](../../src/lib/alerts/engine/evaluators/anomaly.ts#L31-L33) и [anomaly.ts:103-105](../../src/lib/alerts/engine/evaluators/anomaly.ts#L103-L105)
+  - **Поведение**: Вызывающий код получает понятную ошибку вместо тихих `NaN` значений, которые ломают downstream логику
+  - Покрыто валидационными тестами
+
 ### Планируемые улучшения
 
 - [ ] Интеграция с PostgreSQL/Supabase для персистентности
@@ -593,6 +692,8 @@ const validated = AlertSchema.parse(body);
   "zustand": "Управление состоянием",
   "zod": "Валидация данных",
   "@/lib/news-api": "Интеграция с NewsAPI для сентимента",
+  "@/lib/alerts/engine": "Модульный alert engine (evaluators, batcher, sentiment)",
+  "@/stores/alerts": "Модульный alert store (CRUD, evaluation, loaders)",
   "@/stores/notificationStore": "PWA push-уведомления",
   "@/stores/portfolioStore": "Данные портфеля для тикеров"
 }
@@ -615,5 +716,6 @@ const validated = AlertSchema.parse(body);
 ---
 
 **Документация создана**: 2024-11-23
-**Версия**: 1.0.0
+**Последнее обновление**: 2025-11-23 (обновлены пути после модульного рефакторинга)
+**Версия**: 2.0.0 (Modular Architecture)
 **Автор**: Claude Code + Sequential Thinking MCP

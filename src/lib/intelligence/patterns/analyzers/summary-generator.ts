@@ -40,12 +40,17 @@ export function generateSummary(
       : 0;
 
   const mostCommonCategory =
-    statistics.sort((a, b) => b.totalCount - a.totalCount)[0]?.category ||
+    statistics.toSorted((a, b) => b.totalCount - a.totalCount)[0]?.category ||
     'strategic';
 
   const mostSuccessfulCategory =
-    statistics.sort((a, b) => b.successRate - a.successRate)[0]?.category ||
-    'strategic';
+    statistics.toSorted((a, b) => {
+      // Handle nullable successRate: null values go to the end
+      if (a.successRate === null && b.successRate === null) return 0;
+      if (a.successRate === null) return 1;
+      if (b.successRate === null) return -1;
+      return b.successRate - a.successRate;
+    })[0]?.category || 'strategic';
 
   // Calculate risk score (0-100, higher = more emotional/risky)
   const emotionalCount =

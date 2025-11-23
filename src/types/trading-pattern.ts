@@ -109,7 +109,8 @@ export const PatternStatsSchema = z.object({
   totalCount: z.number(),
   successCount: z.number(), // Profitable operations
   failureCount: z.number(), // Unprofitable operations
-  successRate: z.number(), // Percentage of successful operations
+  breakEvenCount: z.number(), // Break-even operations (zero P&L)
+  successRate: z.number().nullable(), // Percentage of successful operations (null if no wins/losses)
   averageProfitLoss: z.number(), // Average P&L in %
   averageTimeToComplete: z.number(), // Average holding period in days
   totalVolume: z.number(), // Total trading volume in currency

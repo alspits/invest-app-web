@@ -4,7 +4,7 @@
  * Basic tests to verify alert engine functionality
  */
 
-import { AlertEngine, MarketData, NewsData } from '../engine';
+import { AlertEngine, MarketData } from '../engine';
 import {
   Alert,
   createAlert,
@@ -294,6 +294,65 @@ describe('AlertEngine', () => {
 
       expect(triggered).toBe(true);
       expect(event?.conditionsMet.some(c => c.includes('Volume spike'))).toBe(true);
+    });
+  });
+
+  describe('Ticker Validation', () => {
+    test('should not trigger when ticker mismatch', async () => {
+      const alert = createAlert(
+        'GAZP',
+        'Price Alert',
+        'THRESHOLD',
+        [
+          createConditionGroup('AND', [
+            createAlertCondition('PRICE', 'GREATER_THAN', 250),
+          ]),
+        ]
+      );
+
+      const fullAlert: Alert = {
+        ...alert,
+        id: 'test-9',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        triggeredCount: 0,
+      };
+
+      // Market data for SBER, but alert is for GAZP
+      const { triggered } = await AlertEngine.evaluateAlert(
+        fullAlert,
+        mockMarketData // ticker: 'SBER'
+      );
+
+      expect(triggered).toBe(false);
+    });
+
+    test('should not trigger when marketData is missing', async () => {
+      const alert = createAlert(
+        'SBER',
+        'Price Alert',
+        'THRESHOLD',
+        [
+          createConditionGroup('AND', [
+            createAlertCondition('PRICE', 'GREATER_THAN', 250),
+          ]),
+        ]
+      );
+
+      const fullAlert: Alert = {
+        ...alert,
+        id: 'test-10',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        triggeredCount: 0,
+      };
+
+      const { triggered } = await AlertEngine.evaluateAlert(
+        fullAlert,
+        null as any // Missing market data
+      );
+
+      expect(triggered).toBe(false);
     });
   });
 });

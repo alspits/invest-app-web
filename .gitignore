@@ -49,3 +49,9 @@ next-env.d.ts
 .vscode/settings.json
 .claude/
 mcp.json
+
+# Memory Bank - exclude auto-generated files
+memory-bank/activeContext.md
+memory-bank/.next/
+memory-bank/node_modules/
+memory-bank/dist/

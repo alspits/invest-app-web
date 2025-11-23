@@ -36,9 +36,15 @@ export class AlertBatcher {
     const timer = setTimeout(() => {
       const events = this.batchedAlerts.get(ticker) || [];
       if (events.length > 0) {
-        onBatchReady(ticker, events);
-        this.batchedAlerts.delete(ticker);
-        this.batchTimers.delete(ticker);
+        try {
+          onBatchReady(ticker, events);
+        } catch (error) {
+          console.error(`[AlertBatcher] Error in onBatchReady for ticker ${ticker}:`, error);
+        } finally {
+          // Always clean up even if callback throws
+          this.batchedAlerts.delete(ticker);
+          this.batchTimers.delete(ticker);
+        }
       }
     }, windowMinutes * 60 * 1000);
 
@@ -54,14 +60,21 @@ export class AlertBatcher {
     this.batchTimers.forEach((timer) => clearTimeout(timer));
     this.batchTimers.clear();
 
-    // Process all batches
-    this.batchedAlerts.forEach((events, ticker) => {
-      if (events.length > 0) {
-        onBatchReady(ticker, events);
-      }
-    });
-
-    // Clear batches
-    this.batchedAlerts.clear();
+    try {
+      // Process all batches - wrap each callback in try/catch to continue on errors
+      this.batchedAlerts.forEach((events, ticker) => {
+        if (events.length > 0) {
+          try {
+            onBatchReady(ticker, events);
+          } catch (error) {
+            console.error(`[AlertBatcher] Error in onBatchReady for ticker ${ticker}:`, error);
+            // Continue processing remaining batches
+          }
+        }
+      });
+    } finally {
+      // Always clear batches even if iteration throws unexpected error
+      this.batchedAlerts.clear();
+    }
   }
 }

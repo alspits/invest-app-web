@@ -8,11 +8,15 @@ import type {
  * Calculate statistics for all detected patterns grouped by category
  *
  * Computes for each pattern category:
- * - Total count, success count, failure count
- * - Success rate percentage
+ * - Total count, success count, failure count, break-even count
+ * - Success rate percentage (null if no wins/losses, excludes break-even)
  * - Average profit/loss and time to complete
  * - Total trading volume
  * - Common emotional triggers
+ *
+ * Note: Success rate is calculated as successCount / (successCount + failureCount)
+ * to exclude break-even (zero profit/loss) patterns from the metric.
+ * If there are no wins or losses (all break-even), successRate is null.
  *
  * @param patterns - Array of detected trading patterns
  * @returns Array of pattern statistics grouped by category
@@ -21,6 +25,7 @@ import type {
  * ```typescript
  * const stats = calculateStatistics(patterns);
  * // Returns statistics for panic_sell, fomo_buy, strategic, emotional
+ * // stats[0].successRate can be null if all patterns are break-even
  * ```
  */
 export function calculateStatistics(
@@ -44,7 +49,12 @@ export function calculateStatistics(
     ).length;
 
     const totalCount = categoryPatterns.length;
-    const successRate = totalCount > 0 ? (successCount / totalCount) * 100 : 0;
+    const breakEvenCount = totalCount - successCount - failureCount;
+
+    const successRate =
+      successCount + failureCount > 0
+        ? (successCount / (successCount + failureCount)) * 100
+        : null;
 
     const averageProfitLoss =
       totalCount > 0
@@ -82,6 +92,7 @@ export function calculateStatistics(
       totalCount,
       successCount,
       failureCount,
+      breakEvenCount,
       successRate,
       averageProfitLoss,
       averageTimeToComplete,

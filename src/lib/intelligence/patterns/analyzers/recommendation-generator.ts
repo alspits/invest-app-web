@@ -50,16 +50,28 @@ export function generateRecommendations(
   // FOMO buys
   const fomoStats = statistics.find((s) => s.category === 'fomo_buy');
   if (fomoStats && fomoStats.totalCount > 0) {
+    const successRateText =
+      fomoStats.successRate !== null
+        ? `Успешность: ${fomoStats.successRate.toFixed(0)}%.`
+        : `Все ${fomoStats.breakEvenCount} сделок без прибыли/убытка.`;
+
     recommendations.push({
       category: 'fomo_buy',
-      message: `Обнаружено ${fomoStats.totalCount} импульсивных покупок (FOMO). Успешность: ${fomoStats.successRate.toFixed(0)}%. Избегайте покупок на эмоциях.`,
-      severity: fomoStats.successRate < 40 ? 'critical' : 'warning',
+      message: `Обнаружено ${fomoStats.totalCount} импульсивных покупок (FOMO). ${successRateText} Избегайте покупок на эмоциях.`,
+      severity:
+        fomoStats.successRate !== null && fomoStats.successRate < 40
+          ? 'critical'
+          : 'warning',
     });
   }
 
   // Strategic success
   const strategicStats = statistics.find((s) => s.category === 'strategic');
-  if (strategicStats && strategicStats.successRate > 60) {
+  if (
+    strategicStats &&
+    strategicStats.successRate !== null &&
+    strategicStats.successRate > 60
+  ) {
     recommendations.push({
       category: 'strategic',
       message: `Стратегические сделки показывают хорошую эффективность (${strategicStats.successRate.toFixed(0)}%). Продолжайте следовать плану.`,
