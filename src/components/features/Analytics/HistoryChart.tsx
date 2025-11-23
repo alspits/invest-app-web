@@ -10,7 +10,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { format } from 'date-fns';
-import { useAnalyticsStore } from '../../../stores/analyticsStore';
+import { useAnalyticsStore } from '@/stores/analytics';
 
 const HistoryChart: React.FC = () => {
   const { snapshots, loading } = useAnalyticsStore();

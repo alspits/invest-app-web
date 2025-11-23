@@ -1,6 +1,6 @@
 'use client';
 
-import { Recommendation } from '@/lib/recommendation-service';
+import { Recommendation } from '@/lib/recommendations';
 import {
   AlertTriangle,
   TrendingUp,

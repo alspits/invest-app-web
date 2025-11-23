@@ -1,6 +1,6 @@
 import React from 'react';
 import { Calendar } from 'lucide-react';
-import { useAnalyticsStore } from '../../../stores/analyticsStore';
+import { useAnalyticsStore } from '@/stores/analytics';
 
 interface DateRangeSelectorProps {
   accountId: string | null;

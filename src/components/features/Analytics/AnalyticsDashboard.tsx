@@ -5,8 +5,8 @@ import MetricsPanel from './MetricsPanel';
 import PortfolioChart from './PortfolioChart';
 import HistoryChart from './HistoryChart';
 import DateRangeSelector from './DateRangeSelector';
-import { useAnalyticsStore } from '../../../stores/analyticsStore';
-import { usePortfolioStore } from '../../../stores/portfolioStore';
+import { useAnalyticsStore } from '@/stores/analytics';
+import { usePortfolioStore } from '@/stores/portfolioStore';
 
 const AnalyticsDashboard: React.FC = () => {
   const selectedAccountId = usePortfolioStore((state) => state.selectedAccountId);

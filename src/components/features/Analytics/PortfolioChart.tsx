@@ -9,7 +9,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { useAnalyticsStore } from '@/stores/analyticsStore';
+import { useAnalyticsStore } from '@/stores/analytics';
 import { getPositionWeights } from '@/lib/analytics';
 
 // Predefined color palette for the pie chart

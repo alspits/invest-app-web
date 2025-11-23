@@ -1,6 +1,6 @@
 import React from 'react';
 import { Loader2, TrendingUp, TrendingDown } from 'lucide-react';
-import { useAnalyticsStore } from '../../../stores/analyticsStore';
+import { useAnalyticsStore } from '@/stores/analytics';
 import type { PortfolioMetrics } from '../../../lib/analytics';
 
 interface MetricCardProps {

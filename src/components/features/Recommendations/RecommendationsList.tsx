@@ -5,7 +5,7 @@ import {
   RecommendationReport,
   RecommendationPriority,
   getHealthScoreInterpretation,
-} from '@/lib/recommendation-service';
+} from '@/lib/recommendations';
 import { RecommendationCard } from './RecommendationCard';
 import { Target, Filter, AlertTriangle, TrendingUp, Info } from 'lucide-react';
 

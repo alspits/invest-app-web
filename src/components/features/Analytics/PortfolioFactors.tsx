@@ -13,7 +13,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { useAnalyticsStore } from '@/stores/analyticsStore';
+import { useAnalyticsStore } from '@/stores/analytics';
 import { usePortfolioStore } from '@/stores/portfolioStore';
 import SectorExposure from './FactorAnalysis/SectorExposure';
 import MarketCapExposure from './FactorAnalysis/MarketCapExposure';

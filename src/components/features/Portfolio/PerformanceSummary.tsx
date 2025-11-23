@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { usePortfolioStore } from '@/stores/portfolioStore';
-import { useAnalyticsStore } from '@/stores/analyticsStore';
+import { useAnalyticsStore } from '@/stores/analytics';
 import { useGoalStore } from '@/stores/goalStore';
 import { moneyValueToNumber, quotationToNumber } from '@/lib/tinkoff-api';
 import {

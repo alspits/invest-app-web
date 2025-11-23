@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { usePortfolioStore } from '@/stores/portfolioStore';
-import { useAnalyticsStore } from '@/stores/analyticsStore';
-import { generateRecommendations, RecommendationReport } from '@/lib/recommendation-service';
+import { useAnalyticsStore } from '@/stores/analytics';
+import { generateRecommendations, RecommendationReport } from '@/lib/recommendations';
 import { RecommendationsList } from '@/components/features/Recommendations/RecommendationsList';
 import { RefreshCw, ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
