@@ -13,26 +13,85 @@
 
 ## Архитектура
 
+### Модульная структура (Nov 2025 Refactoring)
+
+Portfolio Analytics был рефакторен в модульную архитектуру для улучшения читаемости и поддержки:
+
+**До рефакторинга:** 1 монолитный файл `portfolio-analysis.ts` (624 строки)
+**После рефакторинга:** 15 фокусированных модулей (каждый < 150 строк)
+
+```
+src/lib/analytics/portfolio/
+├── constants.ts                     # Константы и пороговые значения
+├── data/                            # Данные-словари (легко обновлять)
+│   ├── moex-benchmark.ts            # Веса индекса MOEX
+│   ├── sector-map.ts                # Маппинг тикеров → секторы
+│   ├── geography-map.ts             # Маппинг тикеров → регионы
+│   └── market-cap-map.ts            # Маппинг тикеров → капитализация
+├── classifiers/
+│   ├── sector-classifier.ts         # Классификация по секторам
+│   ├── geography-classifier.ts      # Классификация по географии
+│   ├── market-cap-classifier.ts     # Классификация по капитализации
+│   └── currency-classifier.ts       # Классификация по валюте
+├── calculators/
+│   ├── concentration.ts             # HHI, топ позиции
+│   ├── sector-exposure.ts           # Секторная экспозиция
+│   ├── market-cap-exposure.ts       # Экспозиция по капитализации
+│   ├── geography-exposure.ts        # Географическая экспозиция
+│   ├── currency-exposure.ts         # Валютная экспозиция
+│   └── tilt-calculator.ts           # Факторные наклоны
+├── enrichment.ts                    # Обогащение позиций факторами
+├── factor-analyzer.ts               # Главный оркестратор (calculateFactorAnalysis)
+└── index.ts                         # Public API
+```
+
+**Преимущества модульной архитектуры:**
+- ✅ Легко добавлять новые тикеры в data/ без изменения логики
+- ✅ Каждый calculator тестируется независимо
+- ✅ Переиспользуемые classifiers для других функций
+- ✅ Простое расширение новыми факторами
+- ✅ Использует ~80% меньше контекста для AI Code Assistant
+
+Подробнее о модульной архитектуре → [CLAUDE.md](../../CLAUDE.md#-modular-architecture-nov-2025-refactoring)
+
+**Analytics Store также модульный:**
+```
+src/stores/analytics/
+├── types.ts                         # Типы store
+├── schemas.ts                       # Zod validation
+├── analytics-store.ts               # Главный store (делегирует actions)
+├── history-loader.ts                # loadHistory action
+├── factor-loader.ts                 # loadFactorAnalysis action
+└── index.ts
+
+src/lib/http/                        # ✨ Переиспользуемые HTTP утилиты
+├── error-classifier.ts              # Обработка ошибок
+├── fetch-utils.ts                   # Timeout, backoff, parse
+├── retry.ts                         # Retry с exponential backoff
+└── index.ts
+```
+
 ### Структура файлов
 
 ```
 src/
 ├── lib/
-│   └── analytics/
-│       └── portfolio-analysis.ts          # Основная логика факторного анализа
+│   ├── analytics/
+│   │   └── portfolio/               # ✨ Модульная структура (см. выше)
+│   └── http/                        # ✨ Переиспользуемые HTTP утилиты
 ├── types/
-│   └── analytics.ts                       # TypeScript типы для факторного анализа
+│   └── analytics.ts                 # TypeScript типы для факторного анализа
 ├── stores/
-│   └── analyticsStore.ts                  # Zustand store с методами loadFactorAnalysis/clearFactorAnalysis
+│   └── analytics/                   # ✨ Модульный store (см. выше)
 ├── app/
 │   └── api/
 │       └── analytics/
 │           └── factors/
-│               └── route.ts               # API endpoint для факторного анализа
+│               └── route.ts         # API endpoint для факторного анализа
 └── components/
     └── features/
         └── Analytics/
-            ├── PortfolioFactors.tsx       # Главный dashboard компонент
+            ├── PortfolioFactors.tsx # Главный dashboard компонент
             └── FactorAnalysis/
                 ├── SectorExposure.tsx     # Секторный анализ
                 ├── MarketCapExposure.tsx  # Анализ по капитализации
@@ -269,7 +328,7 @@ interface CurrencyExposureProps {
 **Implementation Details:**
 1. Получает портфель через Tinkoff API
 2. Трансформирует позиции в формат анализа
-3. Вызывает `calculateFactorAnalysis()` из `portfolio-analysis.ts`
+3. Вызывает `calculateFactorAnalysis()` из `@/lib/analytics/portfolio` (модульная структура)
 4. Возвращает результат с метаданными
 
 ## Zustand Store
@@ -324,7 +383,9 @@ function MyComponent() {
 }
 ```
 
-## Логика анализа (portfolio-analysis.ts)
+## Логика анализа (модульная структура)
+
+Логика анализа распределена по модулям в `@/lib/analytics/portfolio/`. Основные функции:
 
 ### Основные функции
 
@@ -592,7 +653,7 @@ function CustomAnalysis() {
 
 ### Проблема: "Неверная классификация тикера"
 **Решение:**
-1. Проверьте наличие тикера в `portfolio-analysis.ts` (SECTOR_MAP, GEOGRAPHY_MAP)
+1. Проверьте наличие тикера в `@/lib/analytics/portfolio/data/` (sector-map.ts, geography-map.ts)
 2. Добавьте тикер в соответствующие маппинги
 3. Перезапустите dev server
 

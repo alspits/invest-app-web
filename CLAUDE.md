@@ -18,9 +18,10 @@ Documentation: Russian for user-facing docs, English for technical API docs
 
 Example:
 
-text
+```text
 User: "Add button to dashboard"
 Assistant: "Добавляю кнопку на дашборд. Вот компонент..."
+```
 
 ## Quick Start
 
@@ -81,6 +82,7 @@ Architecture Pattern:
 - API routes for server-side external API calls (security)
 - Zustand stores for complex client state management
 - TanStack Query for server state caching
+- **Modular architecture** with focused, testable modules (max 150 lines per file)
 
 ## Critical Patterns (ALWAYS Follow)
 
@@ -123,16 +125,17 @@ useEffect(() => {
 
 **Why:** Centralized data loading pattern.
 
-**Available Stores:**
-- usePortfolioStore - Portfolio & accounts state
-- useAnalyticsStore - Analytics & performance metrics
-- useTaxStore - Tax optimization & harvesting
-- useGoalStore - Investment goals tracking
-- useScenarioStore - What-if scenario calculations
-- usePatternStore - Trading pattern recognition
-- useNewsStore - News feed state
-- useMarketStore - Market context data
-- useNotificationStore - PWA notifications
+**Available Stores (Modular):**
+- **usePortfolioStore** - Portfolio & accounts state
+- **useAnalyticsStore** - `src/stores/analytics/` (modular: actions split, HTTP utils reusable)
+- **useTaxStore** - Tax optimization & harvesting
+- **useGoalStore** - Investment goals tracking
+- **useScenarioStore** - What-if scenario calculations
+- **usePatternStore** - Trading pattern recognition
+- **useAlertStore** - `src/stores/alerts/` (modular: CRUD, evaluation, mock data separated)
+- **useNewsStore** - News feed state
+- **useMarketStore** - Market context data
+- **useNotificationStore** - PWA notifications
 
 ### 4. Mock Data Fallback (Development Mode)
 
@@ -155,6 +158,220 @@ import { Button } from '@/components/ui/Button';
 import { formatCurrency } from '../../lib/utils';
 ```
 
+## 🏗️ Modular Architecture (Nov 2025 Refactoring)
+
+**Philosophy:** Every module has **Single Responsibility**, max **150 lines per file**, highly **testable** and **reusable**.
+
+### Refactored Modules
+
+#### 1. Recommendations (`src/lib/recommendations/`)
+**Before:** 1 file (798 lines)  
+**After:** 15 focused modules
+
+```
+src/lib/recommendations/
+├── types.ts                    # Domain types
+├── converters.ts               # Tinkoff converters
+├── scoring.ts                  # Health score calculation
+├── recommendation-engine.ts    # Main orchestrator
+├── analyzers/
+│   ├── concentration-analyzer.ts
+│   ├── cash-analyzer.ts
+│   ├── sector-analyzer.ts
+│   └── allocation-calculator.ts
+├── generators/
+│   ├── diversification-gen.ts
+│   ├── rebalancing-gen.ts
+│   ├── cash-gen.ts
+│   ├── concentration-gen.ts
+│   ├── sector-gen.ts
+│   └── risk-gen.ts
+└── index.ts                    # Public API
+```
+
+**Usage:**
+```typescript
+import { generateRecommendations } from '@/lib/recommendations';
+```
+
+#### 2. Analytics Store (`src/stores/analytics/`)
+**Before:** 1 file (691 lines)  
+**After:** 10 focused modules + reusable HTTP utilities
+
+```
+src/stores/analytics/
+├── types.ts
+├── schemas.ts                  # Zod validation
+├── analytics-store.ts          # Main store (delegates to actions)
+├── history-loader.ts           # loadHistory action
+├── factor-loader.ts            # loadFactorAnalysis action
+└── index.ts
+
+src/lib/http/                   # NEW: Reusable across all stores
+├── error-classifier.ts         # Error handling
+├── fetch-utils.ts              # Timeout, backoff, parse
+├── retry.ts                    # Retry logic with exponential backoff
+└── index.ts
+```
+
+**Usage:**
+```typescript
+import { useAnalyticsStore } from '@/stores/analytics';
+import { fetchWithRetry } from '@/lib/http'; // Reusable!
+```
+
+#### 3. Pattern Recognition (`src/lib/intelligence/patterns/`)
+**Before:** 1 class (682 lines)  
+**After:** 13 focused modules
+
+```
+src/lib/intelligence/patterns/
+├── pattern-service.ts          # PatternRecognitionService class
+├── matchers/
+│   ├── operation-grouper.ts
+│   └── trade-matcher.ts
+├── detectors/
+│   ├── panic-detector.ts
+│   ├── fomo-detector.ts
+│   ├── strategic-detector.ts
+│   ├── emotional-detector.ts
+│   ├── pair-detector.ts
+│   └── standalone-detector.ts
+├── analyzers/
+│   ├── statistics-analyzer.ts
+│   ├── summary-generator.ts
+│   └── recommendation-generator.ts
+├── utils/
+│   ├── trigger-factory.ts
+│   └── formatters.ts
+└── index.ts
+```
+
+**Usage:**
+```typescript
+import { PatternRecognitionService } from '@/lib/intelligence/patterns';
+```
+
+#### 4. Alert Engine (`src/lib/alerts/engine/`)
+**Before:** 1 monolith (637 lines)  
+**After:** 10 focused modules
+
+```
+src/lib/alerts/engine/
+├── types.ts
+├── alert-engine.ts             # Main orchestrator
+├── batcher.ts                  # AlertBatcher class
+├── sentiment-analyzer.ts       # SentimentAnalyzer class
+├── state-helpers.ts            # DND, cooldown, limits
+├── evaluators/
+│   ├── conditions.ts
+│   ├── news-trigger.ts
+│   ├── anomaly.ts
+│   └── operator-utils.ts
+└── index.ts
+```
+
+**Usage:**
+```typescript
+import { AlertEngine } from '@/lib/alerts/engine';
+```
+
+#### 5. Portfolio Analysis (`src/lib/analytics/portfolio/`)
+**Before:** 1 file (624 lines)  
+**After:** 15 focused modules
+
+```
+src/lib/analytics/portfolio/
+├── constants.ts
+├── data/                       # Data maps (easy to update)
+│   ├── moex-benchmark.ts
+│   ├── sector-map.ts
+│   ├── geography-map.ts
+│   └── market-cap-map.ts
+├── classifiers/
+│   ├── sector-classifier.ts
+│   ├── geography-classifier.ts
+│   ├── market-cap-classifier.ts
+│   └── currency-classifier.ts
+├── calculators/
+│   ├── concentration.ts
+│   ├── sector-exposure.ts
+│   ├── market-cap-exposure.ts
+│   ├── geography-exposure.ts
+│   ├── currency-exposure.ts
+│   └── tilt-calculator.ts
+├── enrichment.ts
+├── factor-analyzer.ts          # Main orchestrator
+└── index.ts
+```
+
+**Usage:**
+```typescript
+import { calculateFactorAnalysis } from '@/lib/analytics/portfolio';
+```
+
+#### 6. Alert Store (`src/stores/alerts/`)
+**Before:** 1 file (602 lines)  
+**After:** 10 focused modules
+
+```
+src/stores/alerts/
+├── types.ts
+├── mock-data.ts                # Mock data isolated (200 lines)
+├── alert-store.ts              # Main store (delegates)
+├── actions/
+│   ├── crud-actions.ts
+│   ├── alert-actions.ts
+│   ├── bulk-actions.ts
+│   ├── loader-actions.ts
+│   └── evaluation-actions.ts
+└── index.ts
+```
+
+**Usage:**
+```typescript
+import { useAlertStore } from '@/stores/alerts';
+```
+
+### Modular Architecture Benefits
+
+✅ **Single Responsibility** - Each file has ONE clear purpose  
+✅ **Testability** - Easy to unit test isolated modules  
+✅ **Maintainability** - Easy to find and modify specific logic  
+✅ **Reusability** - HTTP utilities, classifiers reused across features  
+✅ **AI-Friendly** - Claude Code uses **~80% less context** per file  
+✅ **Scalability** - Add new features without touching old code  
+
+### File Size Rules
+
+**CRITICAL:** All new code must follow these limits:
+
+- **Main service/store:** Max **150 lines**
+- **Action modules:** Max **120 lines**
+- **Utility modules:** Max **100 lines**
+- **Data/constants:** Max **200 lines** (exceptions for large maps)
+
+**If file exceeds limit → Split into focused modules.**
+
+### When Creating New Features
+
+**✅ DO:**
+```typescript
+// Create modular structure from the start
+src/lib/new-feature/
+├── types.ts
+├── main-service.ts         # Orchestrator only
+├── calculators/            # Business logic
+├── utils/                  # Helpers
+└── index.ts                # Public API
+```
+
+**❌ DON'T:**
+```typescript
+// Don't create monolithic files
+src/lib/new-feature.ts      // 600+ lines - BAD!
+```
+
 ## Project Structure
 
 ```text
@@ -165,6 +382,7 @@ src/
 │   │   ├── news/                 # News API endpoints
 │   │   ├── market/               # Market data endpoints
 │   │   ├── patterns/             # Pattern recognition endpoints
+│   │   ├── alerts/               # Alert evaluation endpoints
 │   │   ├── tax/                  # Tax calculation endpoints
 │   │   └── notifications/        # PWA notification endpoints
 │   └── (dashboard)/              # Main dashboard routes
@@ -178,16 +396,26 @@ src/
 │       ├── Scenarios/            # What-if scenarios UI
 │       ├── Patterns/             # Pattern recognition UI
 │       ├── Recommendations/      # Investment recommendations UI
+│       ├── Alerts/               # Alert management UI
 │       ├── News/                 # News feed UI
 │       ├── Market/               # Market context UI
 │       ├── Notifications/        # Notification settings UI
 │       └── PWA/                  # PWA-specific components
-├── stores/                       # Zustand stores (9 stores)
-├── lib/                          # Utility libraries
+├── stores/                       # Zustand stores (modular)
+│   ├── analytics/                # ✨ Modular analytics store
+│   ├── alerts/                   # ✨ Modular alert store
+│   └── [other stores]
+├── lib/                          # Utility libraries (modular)
+│   ├── http/                     # ✨ Reusable HTTP utilities
+│   ├── recommendations/          # ✨ Modular recommendation engine
+│   ├── intelligence/
+│   │   └── patterns/             # ✨ Modular pattern recognition
+│   ├── alerts/
+│   │   └── engine/               # ✨ Modular alert engine
+│   ├── analytics/
+│   │   └── portfolio/            # ✨ Modular portfolio analysis
 │   ├── tinkoff-api.ts            # Tinkoff API client & converters
 │   ├── analytics.ts              # Analytics calculations
-│   ├── tax-utils.ts              # Tax calculations
-│   ├── intelligence/             # AI/ML intelligence features
 │   ├── tax/                      # Tax optimization logic
 │   └── [other services]
 └── types/                        # TypeScript type definitions
@@ -284,13 +512,15 @@ Detailed documentation in `docs/` and `docs/FEATURES/`:
 
 ✅ Progressive Web App (PWA.md, PWA_SETUP.md)
 
-✅ Pattern Recognition (PATTERN_RECOGNITION.md)
+✅ Pattern Recognition (PATTERN_RECOGNITION.md) - ✨ **Refactored to modular**
 
 ✅ Tax Optimization (TAX_OPTIMIZATION.md)
 
 ✅ What-If Scenarios (component exists)
 
-✅ Investment Recommendations (component exists)
+✅ Investment Recommendations - ✨ **Refactored to modular**
+
+✅ Alert System - ✨ **Refactored to modular**
 
 ## Important Rules
 
@@ -303,6 +533,8 @@ Detailed documentation in `docs/` and `docs/FEATURES/`:
 **TypeScript:** Strict mode enabled, no `any` types
 
 **Feature Structure:** Components in `src/components/features/[FeatureName]/`
+
+**Modular Architecture:** Max 150 lines per file, split into focused modules
 
 **Documentation:** ALWAYS update `docs/FEATURES/` when feature changes
 
@@ -383,6 +615,7 @@ All API routes are server-side only (never call external APIs from client):
 /api/news                          # GET - Fetch financial news
 /api/market                        # GET - Fetch market context data
 /api/patterns                      # GET - Pattern recognition analysis
+/api/alerts/evaluate               # POST - Evaluate alerts
 /api/tax/harvesting                # GET - Tax loss harvesting opportunities
 /api/notifications/subscribe       # POST - Subscribe to PWA notifications
 /api/notifications/unsubscribe     # POST - Unsubscribe from notifications
@@ -418,3 +651,6 @@ You: "Creating recommendation engine. Component will include..."
 - For detailed documentation, see `docs/` folder
 - ALWAYS update `docs/FEATURES/` when working on features
 - ALWAYS respond in Russian (code comments in English)
+- **ALWAYS follow modular architecture** - max 150 lines per file
+- **Reuse utilities** from `@/lib/http`, classifiers, etc.
+- When refactoring - split into focused modules like examples above

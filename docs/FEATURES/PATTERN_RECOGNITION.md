@@ -17,22 +17,60 @@
 
 ## Архитектура
 
+### Модульная структура (Nov 2025 Refactoring)
+
+Система распознавания паттернов была рефакторена в модульную архитектуру для улучшения читаемости и поддержки:
+
+**До рефакторинга:** 1 монолитный файл `pattern-recognition.ts` (682 строки)
+**После рефакторинга:** 13 фокусированных модулей (каждый < 150 строк)
+
+```
+src/lib/intelligence/patterns/
+├── pattern-service.ts          # PatternRecognitionService (основной оркестратор)
+├── matchers/
+│   ├── operation-grouper.ts    # Группировка операций по инструментам
+│   └── trade-matcher.ts        # FIFO matching покупок/продаж
+├── detectors/
+│   ├── panic-detector.ts       # Детекция панической продажи
+│   ├── fomo-detector.ts        # Детекция FOMO покупок
+│   ├── strategic-detector.ts   # Детекция стратегических сделок
+│   ├── emotional-detector.ts   # Детекция эмоциональной торговли
+│   ├── pair-detector.ts        # Детекция парных паттернов
+│   └── standalone-detector.ts  # Детекция одиночных паттернов
+├── analyzers/
+│   ├── statistics-analyzer.ts  # Расчет метрик по категориям
+│   ├── summary-generator.ts    # Генерация общей сводки
+│   └── recommendation-generator.ts # Генерация рекомендаций
+├── utils/
+│   ├── trigger-factory.ts      # Создание эмоциональных триггеров
+│   └── formatters.ts           # Форматирование данных
+└── index.ts                    # Public API
+```
+
+**Преимущества модульной архитектуры:**
+- ✅ Каждый модуль имеет одну ответственность
+- ✅ Легкое тестирование изолированных функций
+- ✅ Простая поддержка и расширение
+- ✅ Использует ~80% меньше контекста для AI Code Assistant
+- ✅ Переиспользуемые детекторы для других функций
+
+Подробнее о модульной архитектуре → [CLAUDE.md](../../CLAUDE.md#-modular-architecture-nov-2025-refactoring)
+
 ### Компоненты
 
 ```
 src/
-├── lib/intelligence/
-│   └── pattern-recognition.ts        # Основной сервис анализа
+├── lib/intelligence/patterns/    # ✨ Модульная структура (см. выше)
 ├── types/
-│   └── trading-pattern.ts            # Типы и схемы данных
+│   └── trading-pattern.ts        # Типы и схемы данных
 ├── stores/
-│   └── patternStore.ts               # Zustand store
+│   └── patternStore.ts           # Zustand store
 ├── app/api/patterns/
-│   └── route.ts                      # API endpoint
+│   └── route.ts                  # API endpoint
 └── components/features/Patterns/
-    ├── PatternInsights.tsx           # Обзор паттернов
-    ├── TradingTimeline.tsx           # Хронология паттернов
-    └── EmotionalTriggers.tsx         # Анализ триггеров
+    ├── PatternInsights.tsx       # Обзор паттернов
+    ├── TradingTimeline.tsx       # Хронология паттернов
+    └── EmotionalTriggers.tsx     # Анализ триггеров
 ```
 
 ### Категории паттернов

@@ -10,6 +10,54 @@
 
 ## Архитектура
 
+### Модульная структура (Nov 2025 Refactoring)
+
+Alert System был рефакторен в модульную архитектуру для улучшения читаемости и поддержки:
+
+**Alert Engine (до рефакторинга):** 1 монолитный файл `alert-engine.ts` (637 строк)
+**Alert Engine (после рефакторинга):** 10 фокусированных модулей (каждый < 150 строк)
+
+```
+src/lib/alerts/engine/
+├── types.ts                         # Типы engine
+├── alert-engine.ts                  # Главный оркестратор (evaluateAlert)
+├── batcher.ts                       # AlertBatcher class (батчинг)
+├── sentiment-analyzer.ts            # SentimentAnalyzer class (анализ новостей)
+├── state-helpers.ts                 # DND, cooldown, лимиты
+├── evaluators/
+│   ├── conditions.ts                # Оценка условий (AND/OR логика)
+│   ├── news-trigger.ts              # Оценка новостных триггеров
+│   ├── anomaly.ts                   # Детектор аномалий
+│   └── operator-utils.ts            # Утилиты операторов
+└── index.ts                         # Public API
+```
+
+**Alert Store (до рефакторинга):** 1 файл `alertStore.ts` (602 строки)
+**Alert Store (после рефакторинга):** 10 модулей (каждый < 120 строк)
+
+```
+src/stores/alerts/
+├── types.ts                         # Типы store
+├── mock-data.ts                     # Mock данные изолированы (200 строк)
+├── alert-store.ts                   # Главный store (делегирует actions)
+├── actions/
+│   ├── crud-actions.ts              # CRUD операции (add, update, delete)
+│   ├── alert-actions.ts             # Действия с оповещениями (toggle, snooze)
+│   ├── bulk-actions.ts              # Массовые операции (deleteAll, toggleAll)
+│   ├── loader-actions.ts            # Загрузка данных (loadAlerts, loadHistory)
+│   └── evaluation-actions.ts        # Оценка оповещений (evaluateAlerts)
+└── index.ts                         # Public API
+```
+
+**Преимущества модульной архитектуры:**
+- ✅ Каждый evaluator тестируется независимо
+- ✅ Легко добавлять новые типы триггеров
+- ✅ Переиспользуемый SentimentAnalyzer для других функций
+- ✅ Простая поддержка state-helpers (DND, cooldown)
+- ✅ Использует ~80% меньше контекста для AI Code Assistant
+
+Подробнее о модульной архитектуре → [CLAUDE.md](../../CLAUDE.md#-modular-architecture-nov-2025-refactoring)
+
 ### Типы оповещений
 
 ```typescript
@@ -69,19 +117,19 @@ GET    /api/alerts/statistics       - Статистика оповещений
 ### Alert Engine
 
 ```typescript
-// src/lib/alerts/alert-engine.ts
+// src/lib/alerts/engine/ (модульная структура)
 
 AlertEngine - Основной движок оценки оповещений
-├── evaluateAlert() - Оценить одно оповещение
-├── evaluateConditions() - Проверить условия с AND/OR логикой
-├── evaluateNewsTrigger() - Проверить новостные триггеры
-└── evaluateAnomaly() - Детектор аномалий
+├── evaluateAlert() - Оценить одно оповещение (alert-engine.ts)
+├── evaluateConditions() - Проверить условия с AND/OR логикой (evaluators/conditions.ts)
+├── evaluateNewsTrigger() - Проверить новостные триггеры (evaluators/news-trigger.ts)
+└── evaluateAnomaly() - Детектор аномалий (evaluators/anomaly.ts)
 
-AlertBatcher - Батчинг оповещений
+AlertBatcher - Батчинг оповещений (batcher.ts)
 ├── addToBatch() - Добавить в пакет
 └── flushAll() - Отправить все пакеты
 
-SentimentAnalyzer - Анализ новостного сентимента
+SentimentAnalyzer - Анализ новостного сентимента (sentiment-analyzer.ts)
 └── calculateSentiment() - Расчет среднего сентимента
 ```
 
