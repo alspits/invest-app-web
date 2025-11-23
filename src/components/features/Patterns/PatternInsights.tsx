@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { usePatternStore, usePatternStats, usePatternSummary } from '@/stores/patternStore';
 import { usePortfolioStore } from '@/stores/portfolioStore';
-import { formatPatternCategory, getPatternCategoryColor } from '@/lib/intelligence/pattern-recognition';
+import { formatPatternCategory, getPatternCategoryColor } from '@/lib/intelligence/patterns';
 import type { PatternCategory } from '@/types/trading-pattern';
 
 // ============================================================================

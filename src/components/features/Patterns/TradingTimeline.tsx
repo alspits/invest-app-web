@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { useFilteredPatterns } from '@/stores/patternStore';
-import { formatPatternCategory, getPatternCategoryColor } from '@/lib/intelligence/pattern-recognition';
+import { formatPatternCategory, getPatternCategoryColor } from '@/lib/intelligence/patterns';
 import type { TradingPattern } from '@/types/trading-pattern';
 
 // ============================================================================

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchOperations } from '@/lib/tinkoff-api';
-import { createPatternRecognitionService } from '@/lib/intelligence/pattern-recognition';
+import { createPatternRecognitionService } from '@/lib/intelligence/patterns';
 
 // ============================================================================
 // GET /api/patterns
