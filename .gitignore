@@ -55,3 +55,4 @@ memory-bank/activeContext.md
 memory-bank/.next/
 memory-bank/node_modules/
 memory-bank/dist/
+/tasks

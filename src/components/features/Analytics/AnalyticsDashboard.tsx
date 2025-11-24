@@ -79,7 +79,8 @@ const AnalyticsDashboard: React.FC = () => {
 
   // Initial data loading on component mount
   useEffect(() => {
-    if (selectedAccountId) {
+    // Wait for real account ID (skip mock accounts and null)
+    if (selectedAccountId && !selectedAccountId.startsWith('mock-account')) {
       // Show loading toast for first load
       if (isFirstLoad.current) {
         loadingToastId.current = toast.loading('Loading analytics...');
@@ -105,7 +106,7 @@ const AnalyticsDashboard: React.FC = () => {
           }
         });
     }
-  }, []);
+  }, [selectedAccountId]);
 
   // Update display timer (every 1 second)
   useEffect(() => {
@@ -116,18 +117,8 @@ const AnalyticsDashboard: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Reload history when selected account changes
-  useEffect(() => {
-    if (selectedAccountId && !isFirstLoad.current) {
-      // Show info toast for account switch
-      toast.info('Loading new account...', {
-        duration: 2000,
-      });
-
-      loadHistory(selectedAccountId, 30);
-      setLastUpdated(new Date());
-    }
-  }, [selectedAccountId]);
+  // Note: Account switching is now handled by the main useEffect above
+  // This prevents duplicate loading when selectedAccountId changes
 
   // Show/hide error alert and error toast
   useEffect(() => {

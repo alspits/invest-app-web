@@ -85,6 +85,45 @@ export interface TargetAllocation {
 }
 
 /**
+ * Sector weight information
+ */
+export interface SectorWeight {
+  sector: string;
+  weight: number; // 0-1 (percentage as decimal)
+  value: number; // Absolute value in currency
+  positions: string[]; // Tickers in this sector
+}
+
+/**
+ * Map of sector names to weights
+ */
+export type SectorWeights = Record<string, SectorWeight>;
+
+/**
+ * Overloaded sector detection
+ */
+export interface OverloadedSector {
+  sector: string;
+  currentWeight: number; // 0-1 (percentage as decimal)
+  targetWeight: number; // 0-1 (suggested percentage as decimal)
+  recommendation: string; // Human-readable suggestion
+  adjustmentAmount?: number; // Amount to reduce/increase in currency
+}
+
+/**
+ * Diversification analysis result
+ */
+export interface DiversificationAnalysis {
+  id: string;
+  overloadedSectors: OverloadedSector[];
+  sectorWeights: SectorWeights;
+  confidence: number; // 0-100
+  timestamp: Date;
+  totalValue: number; // Total portfolio value
+  diversificationScore: number; // 0-100 (higher = more diversified)
+}
+
+/**
  * Complete recommendation report
  */
 export interface RecommendationReport {

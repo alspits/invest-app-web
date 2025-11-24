@@ -1,18 +1,18 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { usePortfolioStore } from '@/stores/portfolioStore';
-import { useAnalyticsStore } from '@/stores/analytics';
-import { generateRecommendations, RecommendationReport } from '@/lib/recommendations';
-import { RecommendationsList } from '@/components/features/Recommendations/RecommendationsList';
-import { RefreshCw, ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
+import { useGoalStore } from '@/stores/goalStore';
+import { DiversificationCard } from '@/components/features/Recommendations';
+import { RiskProfileSelector } from '@/components/features/Recommendations';
+import { TickerRecommendationCard } from '@/components/features/Recommendations';
+import { GoalRecommendationCard } from '@/components/features/Recommendations';
+import { ArrowLeft, Loader2, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 
 export default function RecommendationsPage() {
-  const { portfolio, selectedAccountId, loadAccounts, isLoadingPortfolio: portfolioLoading } = usePortfolioStore();
-  const { metrics, loading: metricsLoading } = useAnalyticsStore();
-  const [report, setReport] = useState<RecommendationReport | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { selectedAccountId, loadAccounts, isLoadingPortfolio, portfolio } = usePortfolioStore();
+  const { goals, isLoadingGoals, loadGoals } = useGoalStore();
 
   // Load accounts on mount
   useEffect(() => {
@@ -21,52 +21,16 @@ export default function RecommendationsPage() {
     }
   }, [selectedAccountId, loadAccounts]);
 
-  // Generate recommendations when data is ready
+  // Load goals when account is selected
   useEffect(() => {
-    if (portfolio && metrics && !portfolioLoading && !metricsLoading) {
-      try {
-        const newReport = generateRecommendations(portfolio, metrics);
-        setReport(newReport);
-        setError(null);
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : 'Не удалось сгенерировать рекомендации'
-        );
-        setReport(null);
-      }
+    if (selectedAccountId && !isLoadingGoals) {
+      loadGoals(selectedAccountId);
     }
-  }, [portfolio, metrics, portfolioLoading, metricsLoading]);
+    // isLoadingGoals removed from deps to prevent re-fetch on loading state change
+  }, [selectedAccountId, loadGoals]);
 
-  const handleRefresh = () => {
-    if (portfolio && metrics) {
-      try {
-        const newReport = generateRecommendations(portfolio, metrics);
-        setReport(newReport);
-        setError(null);
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : 'Не удалось обновить рекомендации'
-        );
-      }
-    }
-  };
-
-  const handleApply = (id: string) => {
-    console.log('Applying recommendation:', id);
-    // TODO: Implement apply logic (navigate to relevant page, show modal, etc.)
-  };
-
-  const handleDismiss = (id: string) => {
-    console.log('Dismissing recommendation:', id);
-    // TODO: Implement dismiss logic (store in localStorage, remove from view)
-  };
-
-  const handleLearnMore = (id: string) => {
-    console.log('Learn more about recommendation:', id);
-    // TODO: Implement learn more logic (show modal with details, link to help docs)
-  };
-
-  const isLoading = portfolioLoading || metricsLoading;
+  // Check if portfolio has sufficient data
+  const hasPortfolioData = portfolio && portfolio.positions && portfolio.positions.length > 0;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -83,7 +47,7 @@ export default function RecommendationsPage() {
             </Link>
             <div>
               <h1 className="text-3xl font-bold text-gray-900">
-                Рекомендации по инвестициям
+                Инвестиционные рекомендации
               </h1>
               <p className="text-gray-600 mt-1">
                 Персонализированные советы для улучшения вашего портфеля
@@ -102,85 +66,103 @@ export default function RecommendationsPage() {
         </div>
 
         {/* Loading State */}
-        {isLoading && (
+        {isLoadingPortfolio && (
           <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
             <Loader2 className="w-12 h-12 text-blue-600 mx-auto mb-4 animate-spin" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Анализ портфеля...
+              Загрузка портфеля...
             </h3>
             <p className="text-gray-600">
-              Загружаем данные и генерируем персонализированные рекомендации
+              Подготавливаем данные для анализа
             </p>
           </div>
         )}
 
-        {/* Error State */}
-        {error && !isLoading && (
-          <div className="bg-white rounded-lg border-2 border-red-200 p-8 text-center">
-            <AlertCircle className="w-12 h-12 text-red-600 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Ошибка при генерации рекомендаций
+        {/* Empty State - No Portfolio Data */}
+        {!isLoadingPortfolio && !hasPortfolioData && (
+          <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <TrendingUp className="w-8 h-8 text-blue-600" />
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              Недостаточно данных для анализа
             </h3>
-            <p className="text-gray-600 mb-4">{error}</p>
-            <button
-              onClick={handleRefresh}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-            >
-              Попробовать снова
-            </button>
-          </div>
-        )}
-
-        {/* No Data State */}
-        {!portfolio && !isLoading && !error && (
-          <div className="bg-white rounded-lg border-2 border-dashed border-gray-300 p-12 text-center">
-            <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Нет данных для анализа
-            </h3>
-            <p className="text-gray-600 mb-4">
-              Пожалуйста, загрузите портфель для получения рекомендаций
+            <p className="text-gray-600 mb-6 max-w-md mx-auto">
+              Для создания рекомендаций необходимо добавить активы в ваш портфель.
+              Рекомендательная система проанализирует состав портфеля и предложит
+              персонализированные советы по улучшению диверсификации и достижению целей.
             </p>
             <Link
               href="/portfolio"
-              className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
             >
-              Перейти к портфелю
+              <ArrowLeft className="w-4 h-4" />
+              Вернуться к портфелю
             </Link>
           </div>
         )}
 
-        {/* Recommendations Report */}
-        {report && !isLoading && !error && (
-          <>
-            {/* Refresh Button */}
-            <div className="mb-6 flex justify-end">
-              <button
-                onClick={handleRefresh}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium text-gray-700"
-              >
-                <RefreshCw className="w-4 h-4" />
-                Обновить рекомендации
-              </button>
-            </div>
+        {/* Main Content - Portfolio with Data */}
+        {!isLoadingPortfolio && hasPortfolioData && (
+          <div className="space-y-6">
+            {/* Risk Profile Section */}
+            <section>
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                Риск-профиль
+              </h2>
+              <RiskProfileSelector />
+            </section>
 
-            {/* Recommendations List */}
-            <RecommendationsList
-              report={report}
-              onApply={handleApply}
-              onDismiss={handleDismiss}
-              onLearnMore={handleLearnMore}
-            />
+            {/* Diversification Analysis */}
+            <section>
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                Анализ диверсификации
+              </h2>
+              <DiversificationCard />
+            </section>
 
-            {/* Generated timestamp */}
-            <div className="mt-8 text-center text-sm text-gray-500">
-              Рекомендации сгенерированы:{' '}
-              {new Intl.DateTimeFormat('ru-RU', {
-                dateStyle: 'medium',
-                timeStyle: 'short',
-              }).format(report.generatedAt)}
-            </div>
-          </>
+            {/* Ticker Recommendations */}
+            <section>
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                Рекомендации по инструментам
+              </h2>
+              <TickerRecommendationCard />
+            </section>
+
+            {/* Goal-Based Recommendations */}
+            {goals?.length > 0 && (
+              <section>
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                  Рекомендации на основе целей
+                </h2>
+                <div className="space-y-4">
+                  {goals.map((goal) => (
+                    <GoalRecommendationCard key={goal.id} goalId={goal.id} />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Empty State - No Goals */}
+            {(!goals || goals.length === 0) && !isLoadingGoals && (
+              <section>
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                  Рекомендации на основе целей
+                </h2>
+                <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
+                  <p className="text-gray-600 mb-4">
+                    Создайте инвестиционные цели, чтобы получить персонализированные рекомендации
+                  </p>
+                  <Link
+                    href="/goals"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Создать цель
+                  </Link>
+                </div>
+              </section>
+            )}
+          </div>
         )}
       </div>
     </div>

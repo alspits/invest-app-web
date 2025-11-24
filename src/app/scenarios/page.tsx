@@ -1,21 +1,12 @@
 'use client';
 
-/**
- * Scenarios Page
- *
- * What-If Scenario Tool for portfolio planning.
- * Allows users to simulate changes and compare outcomes.
- */
-
 import { useEffect } from 'react';
 import { usePortfolioStore } from '@/stores/portfolioStore';
 import { useScenarioStore } from '@/stores/scenarioStore';
-import { ScenarioBuilder } from '@/components/features/Scenarios/ScenarioBuilder';
-import { ScenarioComparison } from '@/components/features/Scenarios/ScenarioComparison';
-import { ScenarioList } from '@/components/features/Scenarios/ScenarioList';
-import { AllocationPieChart } from '@/components/features/Scenarios/AllocationPieChart';
-import { ValueComparisonBarChart } from '@/components/features/Scenarios/ValueComparisonBarChart';
-import { Calculator, AlertCircle, RefreshCw } from 'lucide-react';
+import { ScenarioDesigner } from '@/components/features/ScenarioAnalysis';
+import { WhatIfImpactPanel } from '@/components/features/ScenarioAnalysis';
+import { Calculator, AlertCircle, RefreshCw, ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
 
 export default function ScenariosPage() {
   const {
@@ -31,13 +22,8 @@ export default function ScenariosPage() {
   const {
     currentScenario,
     scenarios,
-    comparison,
-    currentMetrics,
-    scenarioMetrics,
     error: scenarioError,
     loadScenarios,
-    calculateScenario,
-    clearCurrentScenario,
   } = useScenarioStore();
 
   // Load accounts on mount
@@ -52,38 +38,45 @@ export default function ScenariosPage() {
     }
   }, [selectedAccountId, loadScenarios]);
 
-  // Recalculate scenario when changes occur
-  useEffect(() => {
-    if (portfolio && portfolio.positions.length > 0) {
-      calculateScenario(portfolio.positions);
-    }
-  }, [
-    portfolio,
-    currentScenario.adjustments,
-    currentScenario.newPositions,
-    calculateScenario,
-  ]);
-
-  const hasChanges =
-    currentScenario.adjustments.length > 0 ||
-    currentScenario.newPositions.length > 0;
+  const hasActiveScenario =
+    currentScenario != null &&
+    (currentScenario.adjustments?.length > 0 ||
+      currentScenario.newPositions?.length > 0);
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Page Header */}
         <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-center gap-3 mb-4">
+            <Link
+              href="/portfolio"
+              className="p-2 rounded-lg hover:bg-gray-200 transition-colors"
+              title="Вернуться к портфелю"
+            >
+              <ArrowLeft className="w-5 h-5 text-gray-600" />
+            </Link>
             <div className="p-2 bg-blue-100 rounded-lg">
               <Calculator className="w-6 h-6 text-blue-600" />
             </div>
-            <h1 className="text-3xl font-bold text-gray-900">
-              Что-если сценарии
-            </h1>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">
+                Что-если анализ
+              </h1>
+              <p className="text-gray-600 mt-1">
+                Моделируйте изменения в портфеле и анализируйте влияние на метрики
+              </p>
+            </div>
           </div>
-          <p className="text-gray-600">
-            Моделируйте изменения в портфеле и анализируйте влияние на метрики
-          </p>
+
+          {/* Breadcrumb */}
+          <nav className="flex items-center gap-2 text-sm text-gray-600">
+            <Link href="/portfolio" className="hover:text-gray-900 transition-colors">
+              Портфель
+            </Link>
+            <span>/</span>
+            <span className="text-gray-900 font-medium">Сценарии</span>
+          </nav>
         </div>
 
         {/* Account Selector */}
@@ -134,34 +127,75 @@ export default function ScenariosPage() {
         {/* Main Content */}
         {!portfolioLoading && portfolio && (
           <div className="space-y-6">
-            {/* Builder and Comparison Row */}
+            {/* Two-column layout for designer and impact */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Scenario Builder */}
-              <ScenarioBuilder />
+              {/* Left Column - Scenario Designer */}
+              <section>
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                  Создать сценарий
+                </h2>
+                <ScenarioDesigner />
+              </section>
 
-              {/* Scenario Comparison */}
-              <ScenarioComparison />
+              {/* Right Column - Impact Analysis */}
+              <section>
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                  Анализ влияния
+                </h2>
+                {hasActiveScenario ? (
+                  <WhatIfImpactPanel />
+                ) : (
+                  <div className="bg-white rounded-lg shadow p-8 text-center">
+                    <Calculator className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-600">
+                      Создайте или выберите сценарий для анализа влияния
+                    </p>
+                  </div>
+                )}
+              </section>
             </div>
 
-            {/* Interactive Charts - Only show when scenario is active */}
-            {hasChanges && comparison && currentMetrics && scenarioMetrics && (
-              <div className="space-y-6">
-                {/* Value Comparison Bar Chart */}
-                <ValueComparisonBarChart
-                  currentMetrics={currentMetrics}
-                  scenarioMetrics={scenarioMetrics}
-                />
-
-                {/* Allocation Pie Chart */}
-                <AllocationPieChart
-                  currentMetrics={currentMetrics}
-                  scenarioMetrics={scenarioMetrics}
-                />
-              </div>
-            )}
-
             {/* Saved Scenarios */}
-            <ScenarioList />
+            {scenarios.length > 0 && (
+              <section>
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                  Сохраненные сценарии
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {scenarios.map((scenario) => (
+                    <div
+                      key={scenario.id}
+                      className="bg-white rounded-lg shadow p-4 hover:shadow-md transition-shadow"
+                    >
+                      <h3 className="font-semibold text-gray-900 mb-2">
+                        {scenario.name}
+                      </h3>
+                      <p className="text-sm text-gray-600 mb-3">
+                        {scenario.description}
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            /* TODO: Load scenario */
+                          }}
+                          className="flex-1 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                        >
+                          Загрузить
+                        </button>
+                        <button
+                          onClick={() => {
+                            /* TODO: Delete scenario */
+                          }}
+                          className="px-3 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                        >
+                          Удалить
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
 
             {/* Help Section */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
@@ -172,84 +206,25 @@ export default function ScenariosPage() {
                 <li className="flex items-start gap-2">
                   <span className="font-bold mt-0.5">1.</span>
                   <span>
-                    <strong>Измените позиции:</strong> используйте кнопки + и - для
-                    корректировки количества существующих активов
+                    <strong>Создайте сценарий:</strong> используйте конструктор
+                    сценариев для моделирования изменений в портфеле
                   </span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="font-bold mt-0.5">2.</span>
                   <span>
-                    <strong>Добавьте новые позиции:</strong> переключитесь на вкладку
-                    "Добавить позиции" для симуляции покупки новых активов
+                    <strong>Анализируйте влияние:</strong> панель справа
+                    автоматически покажет, как изменения повлияют на портфель
                   </span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="font-bold mt-0.5">3.</span>
                   <span>
-                    <strong>Анализируйте результаты:</strong> сравнение метрик
-                    обновляется автоматически при каждом изменении
-                  </span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="font-bold mt-0.5">4.</span>
-                  <span>
-                    <strong>Сохраните сценарий:</strong> нажмите "Сохранить сценарий"
-                    чтобы вернуться к нему позже
-                  </span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="font-bold mt-0.5">5.</span>
-                  <span>
-                    <strong>Загрузите сохраненный:</strong> выберите сценарий из списка
-                    сохраненных для повторного использования
+                    <strong>Сохраните результаты:</strong> сохраните сценарии
+                    для дальнейшего сравнения и анализа
                   </span>
                 </li>
               </ul>
-            </div>
-
-            {/* Metrics Explanation */}
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
-              <h3 className="font-semibold text-gray-900 mb-3">
-                Объяснение метрик
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700">
-                <div>
-                  <h4 className="font-medium text-gray-900 mb-1">
-                    Индекс диверсификации
-                  </h4>
-                  <p>
-                    Показатель от 0% до 100%, где 100% - максимально
-                    диверсифицированный портфель. Выше - лучше.
-                  </p>
-                </div>
-                <div>
-                  <h4 className="font-medium text-gray-900 mb-1">
-                    Индекс концентрации (HHI)
-                  </h4>
-                  <p>
-                    Herfindahl-Hirschman Index. Значение от 0 до 10000. Чем ниже,
-                    тем более диверсифицирован портфель.
-                  </p>
-                </div>
-                <div>
-                  <h4 className="font-medium text-gray-900 mb-1">
-                    Влияние на денежные средства
-                  </h4>
-                  <p>
-                    Сумма, которую нужно инвестировать (+) или которая
-                    высвободится (-) при реализации сценария.
-                  </p>
-                </div>
-                <div>
-                  <h4 className="font-medium text-gray-900 mb-1">
-                    Распределение по секторам
-                  </h4>
-                  <p>
-                    Процентное распределение портфеля по типам инструментов
-                    (акции, облигации, ETF и т.д.).
-                  </p>
-                </div>
-              </div>
             </div>
           </div>
         )}
